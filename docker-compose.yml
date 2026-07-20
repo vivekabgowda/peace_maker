@@ -1,0 +1,95 @@
+# ---------------------------------------------------------------------------
+# BKN AI Capital — development stack.
+# Brings up the full app locally: Postgres (+TimescaleDB), Redis, backend
+# (with hot reload), frontend, and n8n. `make up` wraps this file.
+# ---------------------------------------------------------------------------
+name: bkn-dev
+
+services:
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: ${BKN_DB_USER:-bkn}
+      POSTGRES_PASSWORD: ${BKN_DB_PASSWORD:-bkn}
+      POSTGRES_DB: ${BKN_DB_NAME:-bkn}
+    ports:
+      - '5432:5432'
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${BKN_DB_USER:-bkn} -d ${BKN_DB_NAME:-bkn}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      target: builder
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      BKN_ENV: local
+      BKN_DEBUG: 'true'
+      BKN_LOG_JSON: 'false'
+      BKN_DATABASE_URL: postgresql+asyncpg://${BKN_DB_USER:-bkn}:${BKN_DB_PASSWORD:-bkn}@postgres:5432/${BKN_DB_NAME:-bkn}
+      BKN_REDIS_URL: redis://redis:6379/0
+      BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
+      BKN_CORS_ORIGINS: http://localhost:3000
+    volumes:
+      - ./backend:/app
+    ports:
+      - '8000:8000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: deps
+    command: sh -c "npm run dev"
+    working_dir: /app
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8000
+      NEXT_TELEMETRY_DISABLED: '1'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: Asia/Kolkata
+    ports:
+      - '5678:5678'
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./automation/n8n/workflows:/workflows:ro
+
+volumes:
+  pg_data:
+  redis_data:
+  n8n_data:

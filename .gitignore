@@ -1,0 +1,40 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.db
+
+# ---- Node / Next ----
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+.eslintcache
+
+# ---- Env & secrets ----
+.env
+.env.*
+!.env.example
+!infra/env/.env.*.example
+infra/certs/
+
+# ---- Editor / OS ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---- Build / misc ----
+dist/
+build/
+*.log

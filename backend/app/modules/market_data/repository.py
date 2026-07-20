@@ -151,16 +151,28 @@ class MarketDataRepository:
         total_ce_oi: int,
         total_pe_oi: int,
     ) -> None:
-        self._session.add(
-            OptionChainSnapshotRow(
-                underlying=underlying,
-                expiry=expiry,
-                ts=ts,
-                spot=spot,
-                pcr=pcr,
-                max_pain=max_pain,
-                total_ce_oi=total_ce_oi,
-                total_pe_oi=total_pe_oi,
-            )
+        # Natural PK is (underlying, expiry, ts); a repeated snapshot for the
+        # same key is upserted (idempotent) rather than raising a conflict.
+        insert = pg_insert if self._session.bind.dialect.name == "postgresql" else sqlite_insert
+        values = {
+            "underlying": underlying,
+            "expiry": expiry,
+            "ts": ts,
+            "spot": spot,
+            "pcr": pcr,
+            "max_pain": max_pain,
+            "total_ce_oi": total_ce_oi,
+            "total_pe_oi": total_pe_oi,
+        }
+        stmt = insert(OptionChainSnapshotRow).values(**values)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["underlying", "expiry", "ts"],
+            set_={
+                "spot": stmt.excluded.spot,
+                "pcr": stmt.excluded.pcr,
+                "max_pain": stmt.excluded.max_pain,
+                "total_ce_oi": stmt.excluded.total_ce_oi,
+                "total_pe_oi": stmt.excluded.total_pe_oi,
+            },
         )
-        await self._session.flush()
+        await self._session.execute(stmt)

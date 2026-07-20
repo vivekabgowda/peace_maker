@@ -97,9 +97,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("instrument_id", "timeframe", "ts"),
     )
 
+    # Natural composite PK (underlying, expiry, ts). The partition column ``ts``
+    # must be part of every unique index for TimescaleDB to build the hypertable,
+    # so there is no surrogate id here.
     op.create_table(
         "option_chain_snapshots",
-        sa.Column("id", sa.BigInteger(), autoincrement=True, primary_key=True),
         sa.Column("underlying", sa.String(64), nullable=False),
         sa.Column("expiry", sa.String(20), nullable=False),
         sa.Column("ts", sa.DateTime(timezone=True), nullable=False),
@@ -108,9 +110,7 @@ def upgrade() -> None:
         sa.Column("max_pain", sa.Numeric(18, 4), nullable=True),
         sa.Column("total_ce_oi", sa.BigInteger(), server_default="0", nullable=False),
         sa.Column("total_pe_oi", sa.BigInteger(), server_default="0", nullable=False),
-    )
-    op.create_index(
-        "ix_option_chain_snapshots_underlying", "option_chain_snapshots", ["underlying"]
+        sa.PrimaryKeyConstraint("underlying", "expiry", "ts"),
     )
 
     op.create_table(

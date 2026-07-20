@@ -90,10 +90,12 @@ class MarketIndicator(Base):
 class OptionChainSnapshotRow(Base):
     __tablename__ = "option_chain_snapshots"
 
-    id: Mapped[int] = mapped_column(_BigIntPK, primary_key=True, autoincrement=True)
-    underlying: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    expiry: Mapped[str] = mapped_column(String(20), nullable=False)
-    ts: Mapped[datetime] = mapped_column(nullable=False)
+    # Natural composite PK includes the partition column ``ts`` so TimescaleDB
+    # accepts the hypertable (every unique index must contain the partition
+    # column); no surrogate autoincrement id keeps it portable to SQLite.
+    underlying: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expiry: Mapped[str] = mapped_column(String(20), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(primary_key=True)
     spot: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     pcr: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     max_pain: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)

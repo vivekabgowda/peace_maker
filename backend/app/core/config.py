@@ -9,10 +9,13 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["local", "test", "staging", "production"]
+
+# The development-only JWT secret; forbidden in staging/production.
+_DEFAULT_JWT_SECRET = "change-me-in-production-this-is-not-a-secret"  # noqa: S105
 
 
 class Settings(BaseSettings):
@@ -59,10 +62,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # -- Security / JWT ------------------------------------------------------
-    jwt_secret_key: str = Field(
-        default="change-me-in-production-this-is-not-a-secret",
-        min_length=16,
-    )
+    jwt_secret_key: str = Field(default=_DEFAULT_JWT_SECRET, min_length=16)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
@@ -112,6 +112,16 @@ class Settings(BaseSettings):
         if not value.startswith(allowed):
             raise ValueError(f"database_url must use one of {allowed}")
         return value
+
+    @model_validator(mode="after")
+    def _guard_prod_secrets(self) -> Settings:
+        """Fail fast if a real environment ships the dev JWT default (R1/security)."""
+        if self.env in ("staging", "production") and self.jwt_secret_key == _DEFAULT_JWT_SECRET:
+            raise ValueError(
+                "BKN_JWT_SECRET_KEY must be set to a strong secret in staging/production "
+                "(the development default is not allowed). Generate one with: openssl rand -hex 32"
+            )
+        return self
 
     @property
     def is_production(self) -> bool:

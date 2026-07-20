@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +88,11 @@ class MarketDataRepository:
         c: Decimal,
         volume: int,
     ) -> None:
-        insert = pg_insert if self._session.bind.dialect.name == "postgresql" else sqlite_insert
+        is_pg = self._session.bind.dialect.name == "postgresql"
+        insert = pg_insert if is_pg else sqlite_insert
+        # On a late/duplicate bar, widen the range rather than overwrite it.
+        greatest = func.greatest if is_pg else func.max
+        least = func.least if is_pg else func.min
         stmt = insert(Candle).values(
             instrument_id=instrument_id,
             timeframe=timeframe,
@@ -102,10 +106,10 @@ class MarketDataRepository:
         stmt = stmt.on_conflict_do_update(
             index_elements=["instrument_id", "timeframe", "ts"],
             set_={
-                "high": stmt.excluded.high,
-                "low": stmt.excluded.low,
+                "high": greatest(Candle.high, stmt.excluded.high),
+                "low": least(Candle.low, stmt.excluded.low),
                 "close": stmt.excluded.close,
-                "volume": stmt.excluded.volume,
+                "volume": greatest(Candle.volume, stmt.excluded.volume),
             },
         )
         await self._session.execute(stmt)

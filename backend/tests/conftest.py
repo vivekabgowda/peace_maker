@@ -8,6 +8,7 @@ test configuration.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
 from collections.abc import AsyncIterator
@@ -27,26 +28,49 @@ import httpx  # noqa: E402
 from app.core.database import Base, async_session_factory, engine  # noqa: E402
 from app.main import create_app  # noqa: E402
 
+_IS_SQLITE = os.environ["BKN_DATABASE_URL"].startswith("sqlite")
+# The Postgres CI job sets BKN_TEST_FAKE_REDIS=0 to use the real redis service.
+_USE_FAKE_REDIS = os.environ.get("BKN_TEST_FAKE_REDIS", "1") != "0"
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def _prepare_database() -> AsyncIterator[None]:
-    """Create the schema once for the whole test session, drop it afterwards."""
-    if _TMP_DB.exists():
+    """Create the schema for the test session; drop it afterwards.
+
+    Works on both SQLite (default) and Postgres/TimescaleDB (the CI job that
+    points BKN_DATABASE_URL at a real server), so Postgres-specific paths
+    (ON CONFLICT, GREATEST/LEAST, native types) are exercised in CI.
+    """
+    if _IS_SQLITE and _TMP_DB.exists():
         _TMP_DB.unlink()
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
-    if _TMP_DB.exists():
+    if _IS_SQLITE and _TMP_DB.exists():
         _TMP_DB.unlink()
 
 
 @pytest.fixture(autouse=True)
 async def _fake_redis() -> AsyncIterator[None]:
     """Back get_redis() with an in-memory fakeredis so Redis paths (cache,
-    WS tickets, rate limiting) are exercised and isolated per test."""
-    import fakeredis.aioredis
+    WS tickets, rate limiting) are exercised and isolated per test. When
+    BKN_TEST_FAKE_REDIS=0, use the real Redis (flushed between tests)."""
     from app.core import redis as redis_module
+
+    if not _USE_FAKE_REDIS:
+        redis_module.get_redis()
+        try:
+            yield
+        finally:
+            with contextlib.suppress(Exception):
+                await redis_module.get_redis().flushall()
+        return
+
+    import fakeredis.aioredis
 
     fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
     previous = redis_module._client

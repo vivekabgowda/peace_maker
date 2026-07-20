@@ -39,16 +39,34 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     # NOTE: the live market feed no longer runs in the API process. It runs as a
     # dedicated Feed Service (app.feed) with a single-instance lock — see R0 #1.
-    # The API only consumes events (for WebSocket fan-out) via the bus/Redis.
     if settings.market_feed_enabled:
         logger.warning(
             "market_feed_enabled_in_api_ignored",
             detail="Run the dedicated feed service (python -m app.feed); the API never ingests.",
         )
 
+    # Cross-instance fan-out (R3): consume the Redis event stream into the local
+    # bus so this API worker's WebSocket clients receive feed events.
+    supervisor = None
+    if settings.event_stream_enabled:
+        from app.shared.events.stream import EventStreamBridge
+        from app.shared.supervision import Supervisor
+
+        bridge = EventStreamBridge()
+        supervisor = Supervisor()
+
+        async def _consume() -> None:
+            await bridge.run_consumer(event_bus.publish, is_running=lambda: True)
+
+        supervisor.add("event_stream_consumer", _consume)
+        supervisor.start_all()
+        logger.info("event_stream_consumer_started")
+
     try:
         yield
     finally:
+        if supervisor is not None:
+            await supervisor.stop_all()
         await event_bus.stop()
         await dispose_engine()
         await close_redis()

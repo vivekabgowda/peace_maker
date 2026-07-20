@@ -53,6 +53,7 @@ services:
       BKN_CORS_ORIGINS: http://localhost:3000
       # The API consumes market events for WebSocket fan-out but NEVER ingests —
       # ingestion runs in the dedicated `feed` service (R0 #1).
+      BKN_EVENT_STREAM_ENABLED: 'true'
     volumes:
       - ./backend:/app
     ports:
@@ -77,6 +78,7 @@ services:
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
       BKN_MARKET_PROVIDER: simulated
       BKN_MARKET_TICK_INTERVAL: '1.0'
+      BKN_EVENT_STREAM_ENABLED: 'true'
     volumes:
       - ./backend:/app
     ports:

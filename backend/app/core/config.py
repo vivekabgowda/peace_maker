@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     news_poll_seconds: float = 30.0
     # TTL for the live quote hot-cache (stale data must not linger if feed stops).
     quote_cache_ttl_seconds: int = 30
+    # Redis-Streams event transport for cross-instance fan-out (R3). Enable when
+    # running the feed + >1 API worker; off = single-process in-memory bus only.
+    event_stream_enabled: bool = False
 
     @field_validator(
         "cors_origins",

@@ -63,6 +63,7 @@ services:
       BKN_REDIS_URL: redis://:${BKN_REDIS_PASSWORD}@redis:6379/0
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY}
       BKN_CORS_ORIGINS: ${BKN_CORS_ORIGINS}
+      BKN_EVENT_STREAM_ENABLED: 'true'
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +86,7 @@ services:
       BKN_REDIS_URL: redis://:${BKN_REDIS_PASSWORD}@redis:6379/0
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY}
       BKN_MARKET_PROVIDER: ${BKN_MARKET_PROVIDER:-simulated}
+      BKN_EVENT_STREAM_ENABLED: 'true'
     depends_on:
       postgres:
         condition: service_healthy

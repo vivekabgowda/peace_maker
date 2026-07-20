@@ -69,6 +69,13 @@ class FeedService:
         event_bus.subscribe(
             CandleClosed, self._indicator_engine.on_candle_closed, name="indicator_engine"
         )
+        # Cross-instance fan-out (R3): mirror WS-facing events to the Redis stream
+        # so every API worker can deliver them to its own clients.
+        if self._settings.event_stream_enabled:
+            from app.shared.events.stream import EventStreamBridge, register_forwarder
+
+            register_forwarder(event_bus, EventStreamBridge())
+            logger.info("event_stream_forwarder_registered")
         await self._provider.subscribe(list(self._symbol_ids))
         await cache.set_market_status("open")
 

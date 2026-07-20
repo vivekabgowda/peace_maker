@@ -90,7 +90,9 @@ export default function LoginPage() {
           onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
           className="mt-4 w-full text-center text-xs text-content-muted hover:text-content"
         >
-          {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
+          {mode === 'login'
+            ? "Don't have an account? Register"
+            : 'Already have an account? Sign in'}
         </button>
       </div>
     </div>

@@ -10,8 +10,14 @@ import { useAuthStore } from '@/stores/authStore';
 
 const PANELS = [
   { title: 'Market Regime', body: 'Live market intelligence arrives in Sprint 6.' },
-  { title: 'Top Recommendations', body: 'The risk-gated recommendation feed arrives in Sprint 12.' },
-  { title: 'Portfolio Snapshot', body: 'Holdings, P&L, and risk-budget gauges arrive in Sprint 16.' },
+  {
+    title: 'Top Recommendations',
+    body: 'The risk-gated recommendation feed arrives in Sprint 12.',
+  },
+  {
+    title: 'Portfolio Snapshot',
+    body: 'Holdings, P&L, and risk-budget gauges arrive in Sprint 16.',
+  },
 ];
 
 export default function DashboardPage() {
@@ -26,7 +32,9 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title="Dashboard"
-        description={user ? `Welcome back, ${user.profile?.display_name ?? user.email}` : 'Loading…'}
+        description={
+          user ? `Welcome back, ${user.profile?.display_name ?? user.email}` : 'Loading…'
+        }
       />
       <div className="grid gap-4 md:grid-cols-3">
         {PANELS.map((panel) => (

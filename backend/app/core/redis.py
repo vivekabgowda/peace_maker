@@ -18,7 +18,9 @@ def get_redis() -> redis.Redis:
     global _client
     if _client is None:
         settings = get_settings()
-        _client = redis.from_url(
+        # Use the typed classmethod ``Redis.from_url`` (the module-level
+        # ``redis.from_url`` is untyped in redis-py).
+        _client = redis.Redis.from_url(
             str(settings.redis_url),
             encoding="utf-8",
             decode_responses=True,

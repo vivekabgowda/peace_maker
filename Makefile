@@ -42,8 +42,8 @@ fe-install: ## Install frontend dependencies
 	cd $(FE) && npm ci
 fe-test: ## Run frontend tests
 	cd $(FE) && npm run test
-fe-lint: ## Lint + typecheck frontend
-	cd $(FE) && npm run lint && npm run typecheck
+fe-lint: ## Lint + format-check + typecheck frontend (matches CI)
+	cd $(FE) && npm run format:check && npm run lint -- --max-warnings 0 && npm run typecheck
 fe-build: ## Production build of the frontend
 	cd $(FE) && npm run build
 

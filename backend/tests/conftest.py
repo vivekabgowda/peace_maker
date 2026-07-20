@@ -62,12 +62,22 @@ async def _fake_redis() -> AsyncIterator[None]:
     from app.core import redis as redis_module
 
     if not _USE_FAKE_REDIS:
-        redis_module.get_redis()
+        # Real Redis. pytest-asyncio (asyncio_mode=auto) runs each test on its
+        # own event loop, but a redis client binds its connection pool to the
+        # loop it was created on. Abandon any client from a prior loop and build
+        # a fresh one on *this* loop, otherwise every later test raises
+        # "attached to a different loop". Dispose it at teardown on the same loop.
+        redis_module._client = None
+        real = redis_module.get_redis()
         try:
+            await real.flushall()
             yield
         finally:
             with contextlib.suppress(Exception):
-                await redis_module.get_redis().flushall()
+                await real.flushall()
+            with contextlib.suppress(Exception):
+                await real.aclose()
+            redis_module._client = None
         return
 
     import fakeredis.aioredis

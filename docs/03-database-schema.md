@@ -223,8 +223,12 @@ CREATE TABLE recommendations (
     expected_risk       NUMERIC(18,4) NOT NULL, -- max loss in ₹
     market_context      TEXT NOT NULL,
     technical_reasoning TEXT NOT NULL,
+    news_impact         TEXT,                   -- News Agent summary + impact
     risk_factors        TEXT NOT NULL,
     invalidation        TEXT NOT NULL,          -- invalidation conditions
+    expected_hold       TEXT NOT NULL,          -- e.g. "2-5 sessions", "intraday"
+    expected_hold_bars  INTEGER,                -- machine-usable horizon (bars)
+    expected_volatility TEXT NOT NULL,          -- low | moderate | high (+ ATR%)
     status              TEXT NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','invalidated','expired','acted')),
     valid_until         TIMESTAMPTZ,
@@ -264,9 +268,14 @@ CREATE TABLE risk_profiles (
     user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     max_risk_per_trade_pct  NUMERIC(6,3) NOT NULL DEFAULT 1.0,   -- % of capital
     max_daily_loss_pct      NUMERIC(6,3) NOT NULL DEFAULT 3.0,
+    max_weekly_loss_pct     NUMERIC(6,3) NOT NULL DEFAULT 6.0,
     max_open_positions      INTEGER NOT NULL DEFAULT 5,
     max_capital_per_trade_pct NUMERIC(6,3) NOT NULL DEFAULT 20.0,
+    max_total_exposure_pct  NUMERIC(6,3) NOT NULL DEFAULT 100.0,
     max_sector_exposure_pct NUMERIC(6,3) NOT NULL DEFAULT 30.0,
+    max_portfolio_heat_pct  NUMERIC(6,3) NOT NULL DEFAULT 6.0,   -- aggregate open risk
+    max_drawdown_pct        NUMERIC(6,3) NOT NULL DEFAULT 15.0,  -- protective mode trigger
+    loss_streak_derisk_after INTEGER NOT NULL DEFAULT 3,
     allow_shorts            BOOLEAN NOT NULL DEFAULT true,
     is_active               BOOLEAN NOT NULL DEFAULT true,
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()

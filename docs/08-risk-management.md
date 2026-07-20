@@ -40,8 +40,36 @@ Then a cascade of caps is applied (the tightest wins):
 | Capital-per-trade | `capital_used ≤ capital × max_capital_per_trade_pct` |
 | Open positions | `open_positions < max_open_positions` |
 | Sector exposure | `sector_exposure + capital_used ≤ capital × max_sector_exposure_pct` |
+| Max total exposure | `deployed_capital + capital_used ≤ capital × max_total_exposure_pct` |
 | Daily loss | `today_realized_loss < capital × max_daily_loss_pct` (else **halt new recs**) |
+| Weekly loss | `week_realized_loss < capital × max_weekly_loss_pct` (else **halt for the week**) |
+| Portfolio heat | `open_risk + new_open_risk ≤ capital × max_portfolio_heat_pct` |
+| Max drawdown | if `equity_drawdown ≥ max_drawdown_pct`, **de-risk / halt** per policy |
 | Correlation | reject if highly correlated with an existing open position (concentration) |
+
+### 2.1 Portfolio Heat (aggregate open risk)
+
+"Heat" is the **sum of open risk across all live positions** — i.e. total ₹ at
+risk if every open stop were hit — expressed as a % of capital. A new
+recommendation is rejected if it would push heat above `max_portfolio_heat_pct`
+(default 6%). This is distinct from *exposure* (capital deployed): two positions
+can deploy a lot of capital but carry little open risk if their stops are tight,
+and vice-versa. Heat is the truer measure of "how much can I lose right now."
+
+```
+open_risk_i     = size_i × |entry_i - stop_i|          # per open position
+portfolio_heat  = Σ open_risk_i / capital × 100
+new_heat        = (Σ open_risk_i + expected_risk_₹) / capital × 100
+reject if new_heat > max_portfolio_heat_pct
+```
+
+### 2.2 Weekly Risk & Drawdown Governors
+
+| Governor | Behavior |
+|----------|----------|
+| **Weekly loss limit** | Once cumulative realized loss for the ISO week ≥ `max_weekly_loss_pct`, new recommendations are paused until the next week; UI states why. |
+| **Maximum drawdown** | Tracked on the equity curve (peak-to-trough). At `max_drawdown_pct` the engine enters a protective mode: risk-per-trade is cut and/or new recs halted, requiring explicit user acknowledgement to resume. |
+| **Streak de-risk** | After N consecutive losing trades, `max_risk_per_trade_pct` is scaled down until a green outcome (anti-martingale). |
 
 If, after caps, `size == 0`, the setup is **rejected** (it cannot be taken within
 risk limits) — it is never shown as an un-sizeable "idea."
@@ -81,8 +109,26 @@ with the full `checks` JSON and `reason_codes`. This is the audit backbone.
   losses, cut `max_risk_per_trade_pct` by a factor until a green day).
 - **Daily loss circuit breaker:** once `today_realized_loss ≥ max_daily_loss_pct`,
   the engine halts *new* recommendations for the day and the UI states why.
-- **No revenge trades:** the Psychology Coach agent's tilt signal can further
+- **No revenge trades:** the Journal Coach agent's tilt signal can further
   tighten limits; risk only ratchets one direction — safer.
+
+## 4a. Emergency Stop (kill-switch)
+
+A **global emergency stop** immediately suspends *all* new recommendations and
+alerts across the platform. It can be triggered:
+
+| Trigger | Type |
+|---------|------|
+| Admin/user toggles the kill-switch (feature flag) | Manual |
+| Market-data feed integrity failure / stale snapshot | Automatic |
+| India VIX spike or index gap beyond a configured shock threshold | Automatic |
+| Max-drawdown protective mode reached | Automatic |
+| Anomalous recommendation volume (safety valve) | Automatic |
+
+While engaged, the pipeline still *runs and logs* (for audit/analytics) but the
+Risk gate forces `reject` with reason `emergency_stop`, and the UI shows a clear
+banner. Resuming requires an explicit, audit-logged acknowledgement. This is the
+platform's last-resort safety control and is tested as part of the release gate.
 
 ## 5. Anti-Chase Rule
 

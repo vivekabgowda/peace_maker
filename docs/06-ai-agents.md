@@ -19,16 +19,18 @@ mandate, produces a **structured, scored, explainable opinion**, and an
 
 ```mermaid
 flowchart LR
-    ST[Strategy Engine<br/>deterministic candidates] --> ORCH
+    SC[Scanner Engine<br/>deterministic candidates] --> SAG[Scanner Agent<br/>triage]
+    SAG --> ORCH
     subgraph AIE["AI Recommendation Engine"]
-        ORCH[Orchestrator] --> MA[Market Analyst]
-        ORCH --> TA[Technical Analyst]
-        ORCH --> OA[Options Analyst]
-        ORCH --> SA[Swing Analyst]
-        ORCH --> IA[Intraday Analyst]
-        ORCH --> NA[News Analyst]
-        ORCH --> PC[Psychology Coach]
-        MA & TA & OA & SA & IA & NA & PC --> FUSE[Fusion & Ranking]
+        ORCH[Orchestrator] --> MI[Market Intelligence]
+        ORCH --> TA[Technical Analysis]
+        ORCH --> OA[Options Analysis]
+        ORCH --> SW[Swing Trading]
+        ORCH --> IA[Intraday]
+        ORCH --> NA[News]
+        ORCH --> JC[Journal Coach]
+        ORCH --> PM[Portfolio Manager]
+        MI & TA & OA & SW & IA & NA & JC & PM --> FUSE[Fusion & Ranking]
         FUSE --> RMg[Risk Manager Agent<br/>advisory]
     end
     RMg --> RE[Risk Engine<br/>deterministic terminal gate]
@@ -43,15 +45,23 @@ real, precomputed features.
 
 | Agent | Mandate | Key inputs | Output |
 |-------|---------|-----------|--------|
-| **Market Analyst** | Overall regime, index trend, breadth, macro backdrop | Indices, VIX, breadth, sector rotation | Regime label + directional bias + confidence |
-| **Technical Analyst** | Price structure, indicators, patterns for the instrument | Candles, EMA/RSI/MACD/ATR/VWAP/Supertrend | Setup quality, key levels, stance |
-| **Options Analyst** | Option-chain read, strategy selection, greeks/IV | Option chain, OI, IV, greeks | Suggested option structure, OI signal |
-| **Swing Analyst** | Multi-day setup validity, sector context | Daily candles, sector rotation | Swing viability, holding horizon |
-| **Intraday Analyst** | Session structure, VWAP, momentum, liquidity | Intraday candles, VWAP, volume | Intraday timing, entry window |
-| **News Analyst** | Catalysts, event risk, sentiment, blackout windows | News/sentiment feed, earnings calendar | Catalyst/risk flags, event blackout |
-| **Psychology Coach** | Behavioral guardrails, tilt detection, discipline | Journal, recent P&L, streaks | Behavioral cautions, position on FOMO |
+| **Market Intelligence Agent** | Overall regime, index trend, breadth, macro backdrop | Indices, VIX, breadth, sector rotation | Regime label + directional bias + confidence |
+| **Scanner Agent** | Interprets scanner output; triages which candidates deserve full analysis | Setups, RVOL, screen features | Prioritized candidate shortlist + rationale |
+| **Technical Analysis Agent** | Price structure, indicators, patterns for the instrument | Candles, EMA/RSI/MACD/ATR/VWAP/Supertrend | Setup quality, key levels, stance |
+| **Options Analysis Agent** | Option-chain read, strategy selection, greeks/IV | Option chain, OI, IV, greeks | Suggested option structure, OI signal |
+| **Swing Trading Agent** | Multi-day setup validity, sector context, holding horizon | Daily candles, sector rotation | Swing viability, expected holding time |
+| **Intraday Agent** | Session structure, VWAP, momentum, liquidity | Intraday candles, VWAP, volume | Intraday timing, entry window |
+| **News Agent** | Catalysts, event risk, sentiment, blackout windows | News/sentiment feed, earnings calendar | Catalyst/risk flags, event blackout, news-impact note |
 | **Risk Manager (agent)** | *Advisory* risk read before the hard gate | Draft rec, exposure | Concerns, suggested trims (advisory) |
 | **Portfolio Manager (agent)** | Correlation, concentration vs existing book | Holdings, exposure | Fit/conflict with current portfolio |
+| **Journal Coach** | Behavioral guardrails, tilt/discipline, learning from past journal | Journal, recent P&L, streaks, plan-adherence | Behavioral cautions, FOMO/tilt flags, coaching note |
+
+> **Naming note:** the *Scanner Agent* and deterministic *Scanner Engine*
+> ([07](07-scanner-engine.md)) are distinct: the engine does the heavy indicator
+> math across the universe; the Scanner Agent is a lightweight LLM triage step
+> that decides which surviving candidates merit the full specialist panel (a cost
+> and focus control). *Market Intelligence Agent* was formerly "Market Analyst";
+> *Journal Coach* was formerly "Psychology Coach".
 
 Each agent returns a **strict JSON contract** validated with Pydantic:
 

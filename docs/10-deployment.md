@@ -48,6 +48,57 @@ flowchart LR
     fe --> be
 ```
 
+## 2a. Production Hosting — Hostinger VPS
+
+Version 1 targets a **Hostinger VPS** (KVM plan) running the full stack via Docker
+Compose behind Nginx. This is deliberately simple and cost-appropriate for the
+launch scale; the topology is identical to local dev, so there is no environment
+surprise. Kubernetes is explicitly deferred until scale demands it (see §7).
+
+```mermaid
+flowchart TB
+    U[Users] -->|HTTPS 443| NG[Nginx reverse proxy + TLS]
+    subgraph VPS["Hostinger VPS (Docker Compose)"]
+        NG --> FE[Next.js frontend]
+        NG --> BE[FastAPI backend]
+        NG -.->|/ws| BE
+        BE --> WK[Celery workers + beat]
+        BE --> PG[(PostgreSQL + TimescaleDB)]
+        BE --> RD[(Redis)]
+        WK --> PG
+        WK --> RD
+        N8[n8n] --> BE
+    end
+    BE -->|outbound| EXT[Market data / LLM / news APIs]
+    PG -->|nightly| BK[(Off-VPS encrypted backups)]
+```
+
+### Nginx & SSL
+- **Nginx** is the single public entry point (ports 80/443). It:
+  - terminates TLS and redirects all HTTP → HTTPS,
+  - reverse-proxies `/` to the Next.js container and `/api` to FastAPI,
+  - upgrades and proxies `/api/v1/ws` (WebSocket `Upgrade`/`Connection` headers),
+  - sets security headers (HSTS, CSP, X-Frame-Options), gzip/brotli, and sane
+    proxy timeouts for streaming.
+- **SSL/TLS** via **Let's Encrypt** using Certbot (or the `nginx-proxy` +
+  `acme-companion` pattern) with **automatic renewal** (cron/systemd timer).
+  TLS 1.2+ only; modern cipher suite.
+- Only 22 (SSH, key-only), 80, and 443 are exposed; Postgres/Redis bind to the
+  Docker network and are **never** published to the host's public interface.
+
+### VPS hardening (baseline)
+- SSH key-only auth, non-root deploy user, `ufw` firewall, `fail2ban`.
+- Unattended security updates; Docker daemon locked down.
+- Nightly encrypted DB backups shipped **off the VPS** (object storage) — the VPS
+  is not the only copy.
+
+### Environment variables
+- All config injected via a root `.env` on the VPS (chmod 600, never committed);
+  `infra/env/.env.prod.example` documents every key with safe placeholders.
+- Categories: DB/Redis DSNs, JWT signing keys, market-data & LLM API keys,
+  n8n creds, SMTP/Telegram tokens, feature-flag defaults, `BKN_ENV=production`.
+- Rotatable; no secret ever appears in images, logs, or the repo.
+
 ## 3. Environments & Promotion
 
 | Env | Trigger | Data | Purpose |
@@ -91,6 +142,13 @@ flowchart LR
 
 The **risk-gate regression suite is a hard release gate** — the platform cannot
 ship if the Risk Engine's must-pass suite ([08](08-risk-management.md) §9) fails.
+
+### Deploy mechanism (Hostinger)
+On approved release, GitHub Actions pushes tagged images to the registry, then
+connects to the VPS over SSH (deploy key) and runs a `deploy` make target that:
+`docker compose pull` → run Alembic migrations job → `docker compose up -d`
+(rolling per-service) → health-check → auto-rollback to the previous tag on
+failure. The compose file and `.env` live on the VPS; only image tags change.
 
 ## 5. Database Operations
 

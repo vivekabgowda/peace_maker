@@ -90,15 +90,16 @@ orchestrator fuses them into one ranked recommendation.
 
 | Agent | Focus |
 |-------|-------|
-| Market Analyst | Regime, breadth, index trend, macro context |
-| Technical Analyst | Price structure, indicators, patterns |
-| Options Analyst | Option chain, OI, IV, greeks, strategy selection |
-| Swing Trading Analyst | Multi-day setups, sector rotation |
-| Intraday Analyst | Session structure, VWAP, momentum, liquidity |
+| Market Intelligence Agent | Regime, breadth, index trend, macro context |
+| Scanner Agent | Triage of scanner candidates for full analysis |
+| Technical Analysis Agent | Price structure, indicators, patterns |
+| Options Analysis Agent | Option chain, OI, IV, greeks, strategy selection |
+| Swing Trading Agent | Multi-day setups, sector rotation, holding horizon |
+| Intraday Agent | Session structure, VWAP, momentum, liquidity |
+| News Agent | Event/news sentiment, catalysts, blackout windows |
 | Risk Manager | Sizing, drawdown context, veto authority |
 | Portfolio Manager | Correlation, concentration, existing exposure |
-| Psychology Coach | Behavioral guardrails, tilt detection |
-| News Analyst | Event/news sentiment, catalysts, blackout windows |
+| Journal Coach | Behavioral guardrails, tilt detection, learning |
 
 Detailed design in [06-ai-agents.md](06-ai-agents.md).
 

@@ -154,19 +154,23 @@ GET /api/v1/recommendations/{id}
   "expected_risk": 1462.0,
   "market_context": "Nifty in uptrend, FMCG/energy leading; breadth positive.",
   "technical_reasoning": "Pullback to rising 21-EMA with bullish Supertrend…",
+  "news_impact": "No adverse catalysts; sector news neutral. Earnings in 6 sessions.",
   "risk_factors": "Event risk: earnings in 6 sessions; IV elevated.",
   "invalidation": "Close below 2872 on 15m, or Nifty breaks day low.",
+  "expected_hold": "2-5 sessions",
+  "expected_volatility": "moderate (ATR ~1.5%)",
   "valid_until": "2026-07-21T09:45:00Z",
   "status": "active"
 }
 ```
 
 > **Contract guarantee:** every recommendation response contains *all* required
-> fields from the founding brief — confidence, trade type, entry, stop, T1/T2/T3,
-> RR, position size, max capital allocation, strategy name, market context,
-> technical explanation, risk factors, and invalidation conditions. The API layer
-> rejects any recommendation missing these (defense in depth beyond the Risk
-> gate).
+> fields — ticker/instrument, trade type, entry, stop, T1/T2/T3, risk-reward,
+> position size, max capital allocation, confidence score, strategy name,
+> reasoning, technical analysis, news impact, market context, risk factors,
+> invalidation conditions, expected holding time, and expected volatility. The
+> API layer rejects any recommendation missing these (defense in depth beyond the
+> Risk gate).
 
 ## 8. Risk
 

@@ -58,60 +58,36 @@ transparent, fully risk-managed recommendation — *before* any AI complexity.
 > Estimates assume a small senior team. Solo pace ≈ 1.5–2× duration. Each sprint =
 > 2 weeks.
 
-### Phase 0 — Foundations (Sprints 1–2)
-**Goal:** a deployable skeleton with auth, CI/CD, and the module scaffolding.
+**18 sprints, each an independently-deployable increment.** Every sprint ends
+with something that builds, passes the gates, and ships to staging (and to prod
+once past M0) — no sprint leaves the trunk in a half-wired state. "Independently
+deployable" means: behind a feature flag if incomplete, additive migrations only,
+and safe to release even if the *next* sprint slips.
 
-| Sprint | Deliverables |
-|--------|--------------|
-| **S1** | Monorepo scaffold (backend Clean-Arch skeleton, Next.js shell); Docker Compose stack; Postgres+TimescaleDB+Redis up; base CI (lint, type, unit) |
-| **S2** | Auth module (register/login/refresh, JWT, RBAC); Users/Profile + risk profile CRUD; staging deploy pipeline; structured logging + config; **M0** |
+| # | Sprint | Deployable increment (what ships) | Phase | Milestone |
+|---|--------|-----------------------------------|-------|-----------|
+| **S1** | Skeleton & CI | Monorepo scaffold (Clean-Arch backend, Next.js shell), Docker Compose stack, Postgres+TimescaleDB+Redis, base CI (lint/type/unit) — a deployable "hello" stack | P0 | |
+| **S2** | Auth & profiles | Register/login/refresh (JWT), RBAC, Users/Profile + risk-profile CRUD, structured logging, staging deploy pipeline | P0 | **M0** |
+| **S3** | Nginx + SSL + prod | Nginx reverse proxy, Let's Encrypt TLS, Hostinger VPS bring-up, prod deploy path, `.env` management — public HTTPS app online | P0 | |
+| **S4** | Instrument master & data ingest | Instrument master + seed, market-data provider adapter, candle/quote persistence, market calendar | P1 | |
+| **S5** | Indicators & snapshot cache | Pure indicators lib (EMA/RSI/MACD/ATR/VWAP/Supertrend) with golden tests, Redis snapshot cache | P1 | |
+| **S6** | Realtime + Live Market | WebSocket gateway + channels, indices ticker, Live Market page (TradingView + live quotes), Dashboard v1 | P1 | **M1** |
+| **S7** | Scanner Engine | Universe sharding, indicator screening, `scan_runs`/`setups`, market-hours beat scheduling | P2 | |
+| **S8** | Strategy Engine | 2–3 deterministic strategies (intraday momentum, swing pullback, index OI) → qualified setups + features | P2 | |
+| **S9** | Scanner page | Live setups table, filters, saved screens, scanner observability metrics | P2 | **M2** |
+| **S10** | Risk Engine core | Position sizing + all hard-limit checks (daily/weekly/heat/drawdown/exposure/correlation), `risk_decisions` audit, must-pass risk suite (release-gating), emergency-stop flag | P3 | |
+| **S11** | Recommendation assembly | Deterministic rec with **all required fields** (incl. expected hold/volatility), T1/T2/T3, RR, invalidation; recommendations API + WS `recommendations` channel | P3 | |
+| **S12** | Recommendation UI + monitors | Recommendation Detail (full reasoning surface), invalidation monitor, anti-chase + daily/weekly circuit breakers | P3 | **M3** |
+| **S13** | AI foundation + first agents | AI Engine scaffolding, LLM client adapter, structured-output contracts, Scanner Agent + Market Intelligence + Technical Analysis agents (flagged) | P4 | |
+| **S14** | Specialist agents | Options, Intraday, Swing, News agents; feature-bundle grounding; abstain/validation handling | P4 | |
+| **S15** | Fusion + explainability | Orchestrator + Fusion (weighting/veto/disagreement/calibration), Journal Coach + Risk Manager + Portfolio Manager (advisory) agents, `agent_opinions`, Explanation endpoint + Analyst Panel UI, reduced-AI degradation, agent config in Admin | P4 | **M4** |
+| **S16** | Portfolio & Journal | Portfolio (holdings, live P&L, exposure/heat gauges), Trade Journal (auto-draft from recs), statement import | P5 | |
+| **S17** | Analytics & Notifications | Analytics (equity curve, expectancy, attribution, behavioral), Notification Service via n8n (criteria alerts, EOD report), News ingest | P5/P6 | **M5** |
+| **S18** | Backtesting + Hardening + Beta | Backtesting Engine (historical sim, metrics, regression harness), perf/security review, runbooks, load test, beta onboarding | P6/P7 | **M6/M7** |
 
-### Phase 1 — Market Data + Live UI (Sprints 3–5)
-**Goal:** real-time market visibility.
-
-| Sprint | Deliverables |
-|--------|--------------|
-| **S3** | Instrument master + seed; market-data provider adapter (port + one implementation); candle/quote persistence; market calendar |
-| **S4** | Redis snapshot cache; WebSocket gateway + channels; indicators library (EMA/RSI/MACD/ATR/VWAP/Supertrend) with golden tests |
-| **S5** | Dashboard v1 (indices ticker, portfolio placeholder), Live Market page with TradingView + live quotes; **M1** |
-
-### Phase 2 — Scanner + Strategy (Sprints 6–8)
-**Goal:** the market's "always-on eyes."
-
-| Sprint | Deliverables |
-|--------|--------------|
-| **S6** | Scanner Engine: universe sharding, indicator screening, `scan_runs`/`setups`; beat scheduling (market-hours aware) |
-| **S7** | Strategy Engine: 2–3 deterministic strategies (intraday momentum, swing pullback, index OI) → qualified setups with features |
-| **S8** | Scanner page (live setups table, filters, saved screens); scanner observability metrics; **M2** |
-
-### Phase 3 — Risk + Recommendations (Sprints 9–11)
-**Goal:** the keystone — a fully risk-gated, explainable recommendation (no LLM yet).
-
-| Sprint | Deliverables |
-|--------|--------------|
-| **S9** | Risk Engine: position sizing, all hard-limit checks, `risk_decisions` audit; must-pass risk test suite (release-gating) |
-| **S10** | Recommendation assembly (deterministic): all required fields, T1/T2/T3, RR, invalidation; recommendations API + WS `recommendations` channel |
-| **S11** | Recommendation Detail UI (full reasoning surface); invalidation monitor; anti-chase + daily-loss circuit breaker; **M3** |
-
-### Phase 4 — AI Agents (Sprints 12–15)
-**Goal:** enrich recommendations with an explainable multi-agent panel — without
-ever bypassing risk.
-
-| Sprint | Deliverables |
-|--------|--------------|
-| **S12** | AI Engine scaffolding; LLM client adapter; structured-output contracts; Market + Technical agents |
-| **S13** | Options, Intraday, Swing, News agents; feature-bundle grounding; agent abstain/validation handling |
-| **S14** | Orchestrator + Fusion (weighting, veto, disagreement penalty, calibration); Psychology Coach + Risk Manager (advisory) agents; `agent_opinions` persistence |
-| **S15** | Explanation endpoint + Analyst Panel UI; reduced-AI graceful degradation; agent config in Admin; scorecards scaffold; **M4** |
-
-### Phases 5–8 (planned, sprint-decomposed at phase kickoff)
-
-| Phase | Sprints | Headline deliverables | Milestone |
-|-------|---------|----------------------|-----------|
-| **P5 Portfolio/Journal/Analytics** | S16–S18 | Portfolio (holdings, P&L, exposure gauges), Trade Journal (auto-draft from recs), Analytics (equity curve, expectancy, behavioral) | M5 |
-| **P6 Backtesting/Notifications** | S19–S21 | Backtesting Engine (historical sim, metrics, regression harness), Notification Service via n8n (criteria alerts, EOD reports), News ingest | M6 |
-| **P7 Hardening/Beta** | S22–S24 | Perf tuning, security review, observability/runbooks, load tests, kill-switch, beta onboarding | M7 |
-| **P8 Futures/Advanced (future)** | S25+ | Futures support, advanced options strategies, calibration learning loop maturation, *opt-in gated* broker-connect exploration | — |
+> **Post-V1 (future phases, decomposed at kickoff):** Futures support, advanced
+> options strategies, calibration learning-loop maturation, and an *opt-in,
+> heavily-gated, legally-reviewed* broker-connect exploration. Never default-on.
 
 ## 5. Cross-Cutting Workstreams (every sprint)
 

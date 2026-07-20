@@ -23,6 +23,10 @@ No application code has been written yet, by design. The founding brief mandates
 
 ## 📚 Documentation Index
 
+> **⭐ Start here: [docs/SOFTWARE_DESIGN_DOCUMENT.md](docs/SOFTWARE_DESIGN_DOCUMENT.md)**
+> — the consolidated, review-ready architecture document (all 12 objectives in one
+> place). The numbered docs below are its deep-dive companions.
+
 Read the docs in order — each builds on the previous.
 
 | # | Document | Purpose |

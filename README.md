@@ -10,16 +10,27 @@ automatically** — every output is a transparent, reviewable *recommendation*.
 
 ---
 
-## ⚠️ Project Status — Design Phase
+## 📦 Project Status — Sprint 1 (Foundations) implemented
 
-This repository currently contains **architecture and design documentation only**.
-No application code has been written yet, by design. The founding brief mandates:
+The architecture is approved and **Sprint 1 (foundational infrastructure) is
+implemented and verified**: backend (FastAPI, async SQLAlchemy, Alembic, JWT
+auth), frontend (Next.js App Router shell), Docker/Compose, Nginx, CI/CD, and
+tooling. No market/scanner/AI/trading logic yet — that follows the roadmap.
 
-> *Design the complete architecture, folder structure, APIs, database schema,
-> deployment, and UI wireframes. Produce a phased roadmap. Only after architecture
-> approval should implementation begin. Never skip planning.*
+- **Run it locally:** [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) → `make up`
+- **What's done / what's left for prod:** [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
+- **Coding standards:** [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
 
-**Implementation begins only after these designs are reviewed and approved.**
+Verified gates: backend **Ruff · Black · MyPy(strict) · Pytest (19 tests, 88%)**;
+frontend **ESLint · tsc · Vitest · `next build`**; Compose files validated.
+
+### Quick start
+```bash
+cp infra/env/.env.dev.example .env
+make up          # Postgres+TimescaleDB, Redis, backend, frontend, n8n
+make seed        # create the initial admin user
+# Frontend → http://localhost:3000   API docs → http://localhost:8000/docs
+```
 
 ## 📚 Documentation Index
 

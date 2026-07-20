@@ -1,0 +1,11 @@
+# Prometheus scrape config for BKN AI Capital.
+# The backend exposes Prometheus metrics at /metrics (see app/core/middleware.py).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: bkn-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['backend:8000']

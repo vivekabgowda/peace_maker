@@ -20,6 +20,19 @@ NEWS_INGESTED = Counter(
 QUOTE_LATENCY = Histogram(
     "bkn_quote_processing_seconds",
     "Time to process a single quote through the pipeline",
+    buckets=(0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25),
+)
+INDICATOR_UPDATE_SECONDS = Histogram(
+    "bkn_indicator_update_seconds",
+    "Time to update the incremental indicator bundle for one candle",
+    buckets=(0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05),
+)
+MARKET_SESSION_PHASE = Gauge(
+    "bkn_market_session_phase",
+    "Current session phase (0 closed,1 pre_open,2 open,3 closing,4 muhurat)",
+)
+FEED_IS_LEADER = Gauge(
+    "bkn_feed_is_leader", "Whether this feed instance holds the ingestion lock (1/0)"
 )
 
 WS_CONNECTED_CLIENTS = Gauge(

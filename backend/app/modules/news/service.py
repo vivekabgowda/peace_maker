@@ -46,7 +46,7 @@ class NewsService:
                 )
             )
             new_count += 1
-            await event_bus.publish(
+            event_bus.publish(
                 NewsReceived(
                     source="news_service",
                     article_id=norm.id,

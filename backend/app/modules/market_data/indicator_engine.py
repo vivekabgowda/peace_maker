@@ -1,17 +1,20 @@
 """Technical indicator engine.
 
-``compute_bundle`` is a pure function over OHLCV series returning the latest
-value of each indicator — trivially unit-testable. ``IndicatorEngine`` wires it
-to the candle store, the hot cache, persistence, and the event bus (emitting
-``IndicatorCalculated`` on every close).
+``compute_bundle`` (batch) remains for replay/tests. The live ``IndicatorEngine``
+now keeps **rolling per-(instrument, timeframe) state** and updates incrementally
+on each ``CandleClosed`` — no DB reloads (Technical Design Review R0 #5/#6). It
+consumes the OHLCV carried on the event, so it never reads candles back.
 """
 
 from __future__ import annotations
 
+import time
 from decimal import Decimal
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from app.core.logging import get_logger
-from app.modules.market_data import cache
+from app.modules.market_data import cache, metrics
 from app.modules.market_data.repository import MarketDataRepository
 from app.shared.events import CandleClosed, IndicatorCalculated, event_bus
 from app.shared.indicators import (
@@ -24,6 +27,7 @@ from app.shared.indicators import (
     supertrend,
     vwap,
 )
+from app.shared.indicators.incremental import RollingIndicatorState
 
 logger = get_logger("indicator_engine")
 
@@ -38,7 +42,7 @@ def _last(series: list[float | None]) -> float | None:
 def compute_bundle(
     highs: list[float], lows: list[float], closes: list[float], volumes: list[int]
 ) -> dict[str, float | None]:
-    """Compute the latest value of every tracked indicator from OHLCV series."""
+    """Batch computation of the latest indicator values (replay/tests)."""
     if not closes:
         return {}
     macd_res = macd(closes)
@@ -64,7 +68,6 @@ def compute_bundle(
     }
 
 
-# Columns persisted to the market_indicators table (subset of the bundle).
 _PERSISTED = {
     "ema_9",
     "ema_21",
@@ -81,20 +84,28 @@ _PERSISTED = {
 
 
 class IndicatorEngine:
-    """Recomputes indicators on candle close and distributes them."""
+    """Stateful engine: incremental update per candle close, cache + persist + emit."""
 
-    def __init__(self, repository: MarketDataRepository) -> None:
-        self._repo = repository
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._sf = session_factory
+        self._states: dict[tuple[int, str], RollingIndicatorState] = {}
 
     async def on_candle_closed(self, event: CandleClosed) -> None:
-        candles = await self._repo.recent_candles(event.instrument_id, event.timeframe, limit=300)
-        if len(candles) < 15:
-            return
-        highs = [float(c.high) for c in candles]
-        lows = [float(c.low) for c in candles]
-        closes = [float(c.close) for c in candles]
-        volumes = [int(c.volume) for c in candles]
-        bundle = compute_bundle(highs, lows, closes, volumes)
+        key = (event.instrument_id, event.timeframe)
+        state = self._states.get(key)
+        if state is None:
+            state = RollingIndicatorState()
+            self._states[key] = state
+
+        started = time.perf_counter()
+        bundle = state.update(
+            float(event.high),
+            float(event.low),
+            float(event.close),
+            event.volume,
+            event.bar_ts,
+        )
+        metrics.INDICATOR_UPDATE_SECONDS.observe(time.perf_counter() - started)
 
         await cache.set_indicators(event.symbol, event.timeframe, bundle)
 
@@ -105,10 +116,13 @@ class IndicatorEngine:
         }
         st_dir = bundle.get("supertrend_dir")
         persist["supertrend_dir"] = int(st_dir) if st_dir is not None else None
-        await self._repo.upsert_indicators(
-            event.instrument_id, event.timeframe, event.bar_ts, persist
-        )
-        await event_bus.publish(
+        async with self._sf() as session:
+            await MarketDataRepository(session).upsert_indicators(
+                event.instrument_id, event.timeframe, event.bar_ts, persist
+            )
+            await session.commit()
+
+        event_bus.publish(
             IndicatorCalculated(
                 source="indicator_engine",
                 instrument_id=event.instrument_id,

@@ -98,7 +98,7 @@ class OptionChainEngine:
             total_ce_oi=summary["total_ce_oi"],
             total_pe_oi=summary["total_pe_oi"],
         )
-        await event_bus.publish(
+        event_bus.publish(
             OptionChainUpdated(
                 source="option_chain_engine",
                 underlying=snapshot.underlying,

@@ -98,7 +98,7 @@ no_implicit_optional = true
 exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["passlib.*"]
+module = ["passlib.*", "uvicorn"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

@@ -51,10 +51,8 @@ services:
       BKN_REDIS_URL: redis://redis:6379/0
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
       BKN_CORS_ORIGINS: http://localhost:3000
-      # Sprint 2: run the built-in simulated market feed in dev.
-      BKN_MARKET_FEED_ENABLED: 'true'
-      BKN_MARKET_PROVIDER: simulated
-      BKN_MARKET_TICK_INTERVAL: '1.0'
+      # The API consumes market events for WebSocket fan-out but NEVER ingests —
+      # ingestion runs in the dedicated `feed` service (R0 #1).
     volumes:
       - ./backend:/app
     ports:
@@ -64,6 +62,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # Dedicated market feed service (single-instance ingestion; never the API).
+  feed:
+    build:
+      context: ./backend
+      target: builder
+    command: python -m app.feed
+    environment:
+      BKN_ENV: local
+      BKN_LOG_JSON: 'false'
+      BKN_DATABASE_URL: postgresql+asyncpg://${BKN_DB_USER:-bkn}:${BKN_DB_PASSWORD:-bkn}@postgres:5432/${BKN_DB_NAME:-bkn}
+      BKN_REDIS_URL: redis://redis:6379/0
+      BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
+      BKN_MARKET_PROVIDER: simulated
+      BKN_MARKET_TICK_INTERVAL: '1.0'
+    volumes:
+      - ./backend:/app
+    ports:
+      - '8001:8001'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health/live').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      backend:
+        condition: service_started
 
   frontend:
     build:

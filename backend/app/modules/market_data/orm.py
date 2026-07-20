@@ -10,16 +10,27 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, TimestampMixin
+
+# BigInteger PKs need INTEGER on SQLite for rowid autoincrement (test suite).
+_BigIntPK = BigInteger().with_variant(Integer, "sqlite")
 
 
 class Instrument(Base, TimestampMixin):
     __tablename__ = "instruments"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(_BigIntPK, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
     exchange: Mapped[str] = mapped_column(String(8), nullable=False)
     instrument_type: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -79,7 +90,7 @@ class MarketIndicator(Base):
 class OptionChainSnapshotRow(Base):
     __tablename__ = "option_chain_snapshots"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(_BigIntPK, primary_key=True, autoincrement=True)
     underlying: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     expiry: Mapped[str] = mapped_column(String(20), nullable=False)
     ts: Mapped[datetime] = mapped_column(nullable=False)

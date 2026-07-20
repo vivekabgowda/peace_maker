@@ -30,26 +30,26 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("startup", env=settings.env, version=settings.version)
 
-    # Bridge market events → dashboard WebSocket clients.
+    # Start the event bus workers and bridge market events → WebSocket clients.
+    from app.shared.events import event_bus
     from app.websocket.gateway import register_ws_bridge
 
+    await event_bus.start()
     register_ws_bridge()
 
-    # Optionally start the live market feed (off by default; enabled in envs
-    # that have a provider configured).
-    runner = None
+    # NOTE: the live market feed no longer runs in the API process. It runs as a
+    # dedicated Feed Service (app.feed) with a single-instance lock — see R0 #1.
+    # The API only consumes events (for WebSocket fan-out) via the bus/Redis.
     if settings.market_feed_enabled:
-        from app.modules.market_data.runner import MarketFeedRunner
-
-        runner = MarketFeedRunner()
-        await runner.start()
-        logger.info("market_feed_enabled", provider=settings.market_provider)
+        logger.warning(
+            "market_feed_enabled_in_api_ignored",
+            detail="Run the dedicated feed service (python -m app.feed); the API never ingests.",
+        )
 
     try:
         yield
     finally:
-        if runner is not None:
-            await runner.stop()
+        await event_bus.stop()
         await dispose_engine()
         await close_redis()
         logger.info("shutdown")

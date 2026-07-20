@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fetchWsTicket } from '@/lib/auth/api';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface WsMessage {
@@ -13,12 +14,13 @@ export interface WsMessage {
 
 export type ConnState = 'connecting' | 'open' | 'closed';
 
-function resolveWsUrl(token: string): string {
+function resolveWsUrl(ticket: string): string {
+  // Auth via a short-lived single-use ticket (never a JWT in the URL) — R1.
   const explicit = process.env.NEXT_PUBLIC_WS_URL;
-  if (explicit) return `${explicit}?token=${token}`;
+  if (explicit) return `${explicit}?ticket=${ticket}`;
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${proto}://${window.location.host}/api/v1/ws?token=${token}`;
+    return `${proto}://${window.location.host}/api/v1/ws?ticket=${ticket}`;
   }
   return '';
 }
@@ -41,10 +43,18 @@ export function useMarketSocket(channels: string[], onMessage: (msg: WsMessage) 
   onMessageRef.current = onMessage;
   const channelKey = channels.join(',');
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!token) return;
     setState('connecting');
-    const ws = new WebSocket(resolveWsUrl(token));
+    let ticket: string;
+    try {
+      ticket = (await fetchWsTicket()).ticket;
+    } catch {
+      // No ticket (e.g. token expired) — retry shortly.
+      setTimeout(() => void connect(), 2000);
+      return;
+    }
+    const ws = new WebSocket(resolveWsUrl(ticket));
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -64,14 +74,14 @@ export function useMarketSocket(channels: string[], onMessage: (msg: WsMessage) 
       setState('closed');
       if (closedByUs.current) return;
       const delay = Math.min(15000, 500 * 2 ** attemptRef.current++);
-      setTimeout(connect, delay + Math.random() * 300);
+      setTimeout(() => void connect(), delay + Math.random() * 300);
     };
     ws.onerror = () => ws.close();
   }, [token, channelKey]);
 
   useEffect(() => {
     closedByUs.current = false;
-    connect();
+    void connect();
     return () => {
       closedByUs.current = true;
       wsRef.current?.close();

@@ -39,6 +39,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const response = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers: finalHeaders,
+    // Send the httpOnly refresh cookie with auth requests (R1).
+    credentials: 'include',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 

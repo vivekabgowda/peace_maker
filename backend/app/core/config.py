@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     option_chain_poll_seconds: float = 5.0
     # Risk-free rate used for option greeks.
     risk_free_rate: float = 0.065
+    # News ingestion (polled by the feed service).
+    news_provider: str = "simulated"
+    news_poll_seconds: float = 30.0
+    # TTL for the live quote hot-cache (stale data must not linger if feed stops).
+    quote_cache_ttl_seconds: int = 30
 
     @field_validator(
         "cors_origins",

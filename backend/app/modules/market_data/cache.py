@@ -12,6 +12,7 @@ import json
 import time
 from typing import Any
 
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.redis import get_redis
 
@@ -35,10 +36,12 @@ async def _safe(coro: Any) -> Any:
 async def set_quote(symbol: str, quote: dict[str, Any]) -> None:
     r = get_redis()
     payload = json.dumps(quote, default=str)
+    ttl = get_settings().quote_cache_ttl_seconds
     try:
         pipe = r.pipeline()
-        pipe.set(_QUOTE_KEY.format(symbol=symbol), payload)
-        pipe.set(_FRESH_KEY.format(symbol=symbol), str(time.time()))
+        # TTL so a stopped feed does not leave stale quotes looking "live".
+        pipe.set(_QUOTE_KEY.format(symbol=symbol), payload, ex=ttl)
+        pipe.set(_FRESH_KEY.format(symbol=symbol), str(time.time()), ex=ttl)
         pipe.sadd(_QUOTE_INDEX, symbol)
         await pipe.execute()
     except Exception:

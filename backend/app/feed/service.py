@@ -80,6 +80,9 @@ class FeedService:
             "option_poll", self._run_option_poll, backoff=Backoff(base=1, max_delay=15)
         )
         self._supervisor.add("session_watch", self._run_session_watch, backoff=Backoff(base=1))
+        self._supervisor.add(
+            "news_poll", self._run_news_poll, backoff=Backoff(base=2, max_delay=30)
+        )
         self._supervisor.start_all()
         self._started = True
         logger.info("feed_started", provider=self._provider.name, symbols=len(self._symbol_ids))
@@ -136,6 +139,19 @@ class FeedService:
             if stale:
                 logger.warning("watchdog_stale_tasks", tasks=stale)
             await asyncio.sleep(5.0)
+
+    async def _run_news_poll(self) -> None:
+        from app.modules.news.providers import create_news_provider
+        from app.modules.news.service import NewsService
+
+        task = self._supervisor.get("news_poll")
+        provider = create_news_provider(self._settings.news_provider)
+        while True:
+            task.heartbeat()
+            async with async_session_factory() as session:
+                await NewsService(session).ingest(provider)
+                await session.commit()
+            await asyncio.sleep(self._settings.news_poll_seconds)
 
     # -- Processing ---------------------------------------------------------
     async def _handle_quote(self, quote: object) -> None:

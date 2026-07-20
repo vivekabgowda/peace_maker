@@ -42,6 +42,24 @@ async def _prepare_database() -> AsyncIterator[None]:
 
 
 @pytest.fixture(autouse=True)
+async def _fake_redis() -> AsyncIterator[None]:
+    """Back get_redis() with an in-memory fakeredis so Redis paths (cache,
+    WS tickets, rate limiting) are exercised and isolated per test."""
+    import fakeredis.aioredis
+    from app.core import redis as redis_module
+
+    fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    previous = redis_module._client
+    redis_module._client = fake
+    try:
+        yield
+    finally:
+        await fake.flushall()
+        await fake.aclose()
+        redis_module._client = previous
+
+
+@pytest.fixture(autouse=True)
 async def _clean_tables() -> AsyncIterator[None]:
     """Truncate all tables between tests for isolation."""
     yield

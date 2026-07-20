@@ -18,21 +18,29 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-
-class LogoutRequest(BaseModel):
-    refresh_token: str
-
-
 class TokenPair(BaseModel):
+    """Internal: the service issues both tokens; the router puts the refresh
+    token in an httpOnly cookie and returns only the access token to the client."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"  # noqa: S105 - not a secret; OAuth token type
     expires_in: int  # access-token lifetime in seconds
 
 
+class AccessTokenResponse(BaseModel):
+    """Client-facing token response — access token only (refresh is a cookie)."""
+
+    access_token: str
+    token_type: str = "bearer"  # noqa: S105 - not a secret; OAuth token type
+    expires_in: int
+
+
 class RegisterResponse(BaseModel):
     user: UserRead
-    tokens: TokenPair
+    tokens: AccessTokenResponse
+
+
+class WsTicketResponse(BaseModel):
+    ticket: str
+    expires_in: int = 30

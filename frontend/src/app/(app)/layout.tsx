@@ -5,24 +5,44 @@ import { useEffect, type ReactNode } from 'react';
 
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import { refresh } from '@/lib/auth/api';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
- * Protected application shell. Redirects unauthenticated users to /login and
- * renders the sidebar + topbar around every module page.
+ * Protected application shell.
+ *
+ * On load the access token is not in memory (nothing is persisted — R1), so we
+ * attempt a silent /auth/refresh using the httpOnly cookie. If that fails, the
+ * user is redirected to sign in.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { isAuthenticated, bootstrapped, setSession, setBootstrapped } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
+    if (bootstrapped) return;
+    let active = true;
+    refresh()
+      .then((tokens) => {
+        if (active) setSession(tokens.access_token);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setBootstrapped(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [bootstrapped, setSession, setBootstrapped]);
 
-  if (!isAuthenticated) {
+  useEffect(() => {
+    if (bootstrapped && !isAuthenticated) router.replace('/login');
+  }, [bootstrapped, isAuthenticated, router]);
+
+  if (!bootstrapped || !isAuthenticated) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-content-muted">
-        Redirecting to sign in…
+        {bootstrapped ? 'Redirecting to sign in…' : 'Restoring your session…'}
       </div>
     );
   }

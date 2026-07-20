@@ -16,7 +16,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.logging import get_logger
-from app.core.security import TokenError, decode_token
+from app.modules.auth.tickets import consume_ticket
 from app.modules.market_data import metrics
 from app.shared.events import (
     IndicatorCalculated,
@@ -126,12 +126,10 @@ def register_ws_bridge() -> None:
 
 @router.websocket("/ws")
 async def market_ws(ws: WebSocket) -> None:
-    token = ws.query_params.get("token")
-    try:
-        if not token:
-            raise TokenError("missing token")
-        decode_token(token, expected_type="access")
-    except TokenError:
+    # Auth via a short-lived single-use ticket (never a JWT in the URL).
+    ticket = ws.query_params.get("ticket")
+    user_id = await consume_ticket(ticket) if ticket else None
+    if user_id is None:
         await ws.close(code=4401)
         return
 

@@ -16,12 +16,10 @@ const TICKERS = [
 
 export function Topbar() {
   const router = useRouter();
-  const { user, refreshToken, clear } = useAuthStore();
+  const { user, clear } = useAuthStore();
 
   async function handleLogout() {
-    if (refreshToken) {
-      await logoutRequest(refreshToken).catch(() => undefined);
-    }
+    await logoutRequest().catch(() => undefined);
     clear();
     router.push('/login');
   }

@@ -51,6 +51,10 @@ services:
       BKN_REDIS_URL: redis://redis:6379/0
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
       BKN_CORS_ORIGINS: http://localhost:3000
+      # Sprint 2: run the built-in simulated market feed in dev.
+      BKN_MARKET_FEED_ENABLED: 'true'
+      BKN_MARKET_PROVIDER: simulated
+      BKN_MARKET_TICK_INTERVAL: '1.0'
     volumes:
       - ./backend:/app
     ports:
@@ -70,6 +74,8 @@ services:
     environment:
       BACKEND_INTERNAL_URL: http://backend:8000
       NEXT_TELEMETRY_DISABLED: '1'
+      # Browser connects to the backend WebSocket directly in dev.
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000/api/v1/ws
     volumes:
       - ./frontend:/app
       - /app/node_modules

@@ -71,12 +71,33 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = True
 
-    @field_validator("cors_origins", mode="before")
+    # -- Market data (Sprint 2) ---------------------------------------------
+    # Active market-data provider (resolved via the provider registry). The
+    # rest of the app never depends on a concrete broker.
+    market_provider: str = "simulated"
+    # Start the live market feed runner on application startup.
+    market_feed_enabled: bool = False
+    # Simulated provider tick cadence (seconds).
+    market_tick_interval: float = 1.0
+    # Timeframes the candle builder maintains.
+    market_timeframes: list[str] = Field(default_factory=lambda: ["1m", "5m", "15m", "1h", "1d"])
+    # Underlyings whose option chains are polled.
+    option_chain_underlyings: list[str] = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY"])
+    option_chain_poll_seconds: float = 5.0
+    # Risk-free rate used for option greeks.
+    risk_free_rate: float = 0.065
+
+    @field_validator(
+        "cors_origins",
+        "market_timeframes",
+        "option_chain_underlyings",
+        mode="before",
+    )
     @classmethod
-    def _split_cors(cls, value: object) -> object:
-        """Allow a comma-separated string for ``BKN_CORS_ORIGINS``."""
+    def _split_csv(cls, value: object) -> object:
+        """Allow comma-separated strings for list-typed settings."""
         if isinstance(value, str) and not value.startswith("["):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
     @field_validator("database_url")

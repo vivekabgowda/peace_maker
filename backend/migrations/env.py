@@ -17,6 +17,8 @@ from app.core.database import Base, engine
 
 # Import model modules so their tables register on Base.metadata.
 from app.modules.auth import models as _auth_models  # noqa: F401
+from app.modules.market_data import orm as _market_orm  # noqa: F401
+from app.modules.news import orm as _news_orm  # noqa: F401
 from app.modules.users import models as _users_models  # noqa: F401
 
 config = context.config

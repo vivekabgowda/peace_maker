@@ -1,0 +1,72 @@
+{
+  "title": "BKN — Market Intelligence",
+  "uid": "bkn-market",
+  "timezone": "Asia/Kolkata",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Quotes ingested / sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [{ "expr": "rate(bkn_quotes_ingested_total[1m])", "legendFormat": "quotes/s" }]
+    },
+    {
+      "id": 2,
+      "title": "Candles built / sec by timeframe",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum by (timeframe) (rate(bkn_candles_built_total[1m]))", "legendFormat": "{{timeframe}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Quote processing latency (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(bkn_quote_processing_seconds_bucket[5m]))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, rate(bkn_quote_processing_seconds_bucket[5m]))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, rate(bkn_quote_processing_seconds_bucket[5m]))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Provider connected",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "targets": [{ "expr": "bkn_provider_connected" }]
+    },
+    {
+      "id": 5,
+      "title": "Connected WS clients",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "targets": [{ "expr": "bkn_ws_connected_clients" }]
+    },
+    {
+      "id": 6,
+      "title": "Dropped WS messages (backpressure)",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 12 },
+      "targets": [{ "expr": "rate(bkn_ws_messages_dropped_total[1m])", "legendFormat": "dropped/s" }]
+    },
+    {
+      "id": 7,
+      "title": "Option chains updated / sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [{ "expr": "rate(bkn_option_chains_updated_total[1m])", "legendFormat": "chains/s" }]
+    },
+    {
+      "id": 8,
+      "title": "Data freshness (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [{ "expr": "bkn_data_freshness_seconds", "legendFormat": "{{symbol}}" }]
+    }
+  ]
+}

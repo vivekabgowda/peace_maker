@@ -21,6 +21,12 @@ tooling. No market/scanner/AI/trading logic yet — that follows the roadmap.
 - **What's done / what's left for prod:** [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
 - **Coding standards:** [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
 
+**Sprint 2 — Real-Time Market Intelligence** is also implemented: provider
+abstraction (+ simulated reference feed), event bus, instrument master, live
+quote cache, multi-timeframe candle builder, 14-indicator engine, option-chain
+engine (PCR/max-pain/greeks), news engine, WebSocket gateway, and a live
+dashboard. See [docs/SPRINT2_MARKET_INTELLIGENCE.md](docs/SPRINT2_MARKET_INTELLIGENCE.md).
+
 Verified gates: backend **Ruff · Black · MyPy(strict) · Pytest (19 tests, 88%)**;
 frontend **ESLint · tsc · Vitest · `next build`**; Compose files validated.
 

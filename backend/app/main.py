@@ -29,10 +29,30 @@ logger = get_logger(__name__)
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("startup", env=settings.env, version=settings.version)
-    yield
-    await dispose_engine()
-    await close_redis()
-    logger.info("shutdown")
+
+    # Bridge market events → dashboard WebSocket clients.
+    from app.websocket.gateway import register_ws_bridge
+
+    register_ws_bridge()
+
+    # Optionally start the live market feed (off by default; enabled in envs
+    # that have a provider configured).
+    runner = None
+    if settings.market_feed_enabled:
+        from app.modules.market_data.runner import MarketFeedRunner
+
+        runner = MarketFeedRunner()
+        await runner.start()
+        logger.info("market_feed_enabled", provider=settings.market_provider)
+
+    try:
+        yield
+    finally:
+        if runner is not None:
+            await runner.stop()
+        await dispose_engine()
+        await close_redis()
+        logger.info("shutdown")
 
 
 def create_app() -> FastAPI:

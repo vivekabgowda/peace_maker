@@ -79,7 +79,7 @@ def wait_for_health(timeout: int = 120) -> None:
 
 # -- Auth -------------------------------------------------------------------
 def authenticate() -> str:
-    creds = {"email": f"validator+{int(time.time())}@bkn.local", "password": "Validate!123"}
+    creds = {"email": f"validator+{int(time.time())}@example.com", "password": "Validate!123"}
     body = _request("POST", "/auth/register", body=creds)
     token = body["tokens"]["access_token"]
     ok("Registered a validation user and obtained a JWT")

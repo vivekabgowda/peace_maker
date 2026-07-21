@@ -24,7 +24,7 @@ logger = get_logger("seed")
 
 
 async def seed_admin() -> None:
-    email = os.getenv("BKN_SEED_ADMIN_EMAIL", "admin@bkn.local")
+    email = os.getenv("BKN_SEED_ADMIN_EMAIL", "admin@example.com")
     password = os.getenv("BKN_SEED_ADMIN_PASSWORD", "ChangeMe!123")
 
     async with async_session_factory() as session:

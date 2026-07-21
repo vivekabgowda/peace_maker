@@ -6,6 +6,7 @@ import math
 import time
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from app.modules.ai_engine.scoring import ScoringEngine
 from app.modules.backtesting import Backtester, apply_to_registry
 from app.modules.backtesting.engine import BacktestConfig
@@ -150,19 +151,37 @@ def test_apply_to_registry_changes_live_scoring() -> None:
         assert 0 <= card.regime <= 100
 
 
-def test_backtest_performance_budget() -> None:
-    # 3 symbols x 300 bars. Cost is dominated by the (separately benchmarked)
-    # incremental indicator engine; this guards against O(n^2) walk regressions.
-    closes = _wavy_uptrend(300)
-    series = {f"S{i}": _bars(closes) for i in range(3)}
-    bench = _bars(closes)
+def _under_coverage() -> bool:
+    """True when pytest-cov is tracing — wall-clock timing is meaningless then."""
+    try:
+        import coverage
+
+        return coverage.Coverage.current() is not None
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(
+    _under_coverage(), reason="wall-clock timing is meaningless under coverage line-tracing"
+)
+def test_backtest_scales_linearly_not_quadratically() -> None:
+    # Assert *scaling*, not an absolute budget: doubling the bars (both sizes
+    # above the indicator engine's 250-bar window cap, so per-update cost is
+    # constant) should stay near-linear — never quadratic (an O(n^2) walk bug,
+    # like the O(trades x n) tail-copy this test originally caught).
     strat = registry.get("ema_trend")
-    Backtester().run(strat, series, benchmark=bench)  # warm
-    best = min(_timed(strat, series, bench) for _ in range(3))
-    # ~0.5s uninstrumented; budget leaves headroom for pytest-cov line tracing
-    # (a large constant-factor tax) and loaded CI runners. An O(n^2) regression
-    # would blow past this by many seconds.
-    assert best < 3000.0, f"backtest {best:.0f}ms too slow"
+
+    def cost(n: int) -> float:
+        closes = _wavy_uptrend(n)
+        series = {"S0": _bars(closes)}
+        bench = _bars(closes)
+        Backtester().run(strat, series, benchmark=bench)  # warm
+        return min(_timed(strat, series, bench) for _ in range(3))
+
+    t_small = cost(350)
+    t_big = cost(700)
+    ratio = t_big / t_small if t_small > 0 else 0.0
+    assert ratio < 3.5, f"doubling bars scaled {ratio:.1f}x — worse than linear (O(n^2)?)"
 
 
 def _timed(strat: object, series: dict[str, list[Bar]], bench: list[Bar]) -> float:

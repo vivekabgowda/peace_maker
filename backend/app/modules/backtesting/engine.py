@@ -83,7 +83,9 @@ class Backtester:
             trade = simulate_trade(
                 signal,
                 bars[i],
-                bars[i + 1 :],
+                # Only the holding horizon is needed — slicing the full tail here
+                # would make the walk O(trades x n). Keep it O(max_holding_bars).
+                bars[i + 1 : i + 1 + cfg.max_holding_bars],
                 max_holding_bars=cfg.max_holding_bars,
             )
             result.trades.append(trade)

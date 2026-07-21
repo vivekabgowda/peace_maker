@@ -1,14 +1,14 @@
 import { PageHeader } from '@/components/layout/PageHeader';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ScannerView } from '@/features/scanner/ScannerView';
 
 export default function ScannerPage() {
   return (
     <div>
-      <PageHeader title="Scanner" description="Continuous market scanning and candidate setups." />
-      <EmptyState
-        title="Scanner — arriving in Sprint 9"
-        description="Sprint 1 delivers the foundation (auth, shell, navigation). This module's UI lands in Sprint 9 per the roadmap."
+      <PageHeader
+        title="Scanner"
+        description="Ranked, risk-gated setups from the Alpha Engine — with a NO-TRADE verdict when warranted."
       />
+      <ScannerView />
     </div>
   );
 }

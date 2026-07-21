@@ -33,6 +33,7 @@ dashboard. See [docs/SPRINT2_MARKET_INTELLIGENCE.md](docs/SPRINT2_MARKET_INTELLI
 - **5 — Backtesting:** bar-by-bar replay, trade simulator, earned strategy stats. [docs/SPRINT5_BACKTESTING.md](docs/SPRINT5_BACKTESTING.md)
 - **6 — Zerodha Kite Connect:** live market data + OAuth + historical ingestion, **no order placement**. [docs/SPRINT6_ZERODHA.md](docs/SPRINT6_ZERODHA.md)
 - **7 — Local Deployment & Validation:** one-command `make up`/`make down`, health checks, **paper-trading engine**, trade journal, performance analytics, and **automatic daily/weekly reports** — advisory-only, no live orders. [docs/SPRINT7_LOCAL_DEPLOYMENT.md](docs/SPRINT7_LOCAL_DEPLOYMENT.md)
+- **8 — Local Environment Bring-up:** clean-machine macOS guide, `/health/diagnostics` endpoint, and a **live diagnostics page** (`/diagnostics`) verifying frontend↔backend, database, Redis, and the simulated market-data pipeline end-to-end — no live broker. [docs/SPRINT8_MAC_SETUP.md](docs/SPRINT8_MAC_SETUP.md)
 
 Verified gates: backend **Ruff · Black · MyPy(strict) · Pytest (19 tests, 88%)**;
 frontend **ESLint · tsc · Vitest · `next build`**; Compose files validated.

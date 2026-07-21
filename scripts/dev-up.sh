@@ -43,8 +43,10 @@ cat <<'EOF'
 ✓ BKN AI Capital is up.
 
   Frontend            http://localhost:3000
+  Diagnostics page    http://localhost:3000/diagnostics
   API (docs)          http://localhost:8000/docs
   API health          http://localhost:8000/api/v1/health/ready
+  Diagnostics (API)   http://localhost:8000/api/v1/health/diagnostics
   Feed health         http://localhost:8001/health/live
   n8n (automation)    http://localhost:5678
 

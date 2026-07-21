@@ -86,12 +86,27 @@ def authenticate() -> str:
     return token
 
 
-# -- 2. Live market data ----------------------------------------------------
+# -- 2. Diagnostics ---------------------------------------------------------
+def check_diagnostics() -> None:
+    step("Fetching system diagnostics …")
+    report = _request("GET", "/health/diagnostics")
+    for svc in report.get("services", []):
+        mark = _PASS if svc.get("healthy") else _FAIL
+        print(f"      {mark} {svc.get('name')}: {svc.get('detail')}")
+    core = {s["name"]: s["healthy"] for s in report.get("services", [])}
+    if not (core.get("database") and core.get("redis")):
+        raise ValidationError("A core service (database/redis) is unhealthy")
+    if report.get("broker_connected"):
+        raise ValidationError("A live broker is connected — Sprint 8 expects simulated data only")
+    ok(f"Diagnostics: {report.get('status')} (provider: {report.get('market_provider')})")
+
+
+# -- 3. Live market data ----------------------------------------------------
 def wait_for_live_data(token: str, timeout: int = 90) -> dict:
     step("Checking that live market data is flowing …")
     deadline = time.time() + timeout
     while time.time() < deadline:
-        quotes = _request("GET", "/market/quotes", token=token).get("quotes", [])
+        quotes = _request("GET", "/market/quotes", token=token).get("data", [])
         priced = [q for q in quotes if q.get("ltp") not in (None, "", "0")]
         if priced:
             sample = priced[0]
@@ -176,6 +191,7 @@ def main() -> int:
     print("\n=== BKN AI Capital — end-to-end validation ===\n")
     try:
         wait_for_health()
+        check_diagnostics()
         token = authenticate()
         quote = wait_for_live_data(token)
         execute_paper_trade(token, quote)

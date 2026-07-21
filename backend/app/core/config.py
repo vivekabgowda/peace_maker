@@ -6,11 +6,18 @@ A single cached :class:`Settings` instance is exposed via :func:`get_settings`.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+# List-typed settings accept a comma-separated string (e.g. docker-compose sets
+# ``BKN_CORS_ORIGINS=http://localhost:3000``) OR a JSON array. ``NoDecode`` stops
+# pydantic-settings from JSON-decoding the env value before our ``_split_csv``
+# validator runs — otherwise a plain CSV string raises a SettingsError.
+CsvList = Annotated[list[str], NoDecode]
 
 Environment = Literal["local", "test", "staging", "production"]
 
@@ -45,7 +52,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # -- CORS ----------------------------------------------------------------
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: CsvList = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # -- Database ------------------------------------------------------------
     # Async SQLAlchemy DSN. Postgres (asyncpg) in every real environment; the
@@ -80,9 +87,9 @@ class Settings(BaseSettings):
     # Simulated provider tick cadence (seconds).
     market_tick_interval: float = 1.0
     # Timeframes the candle builder maintains.
-    market_timeframes: list[str] = Field(default_factory=lambda: ["1m", "5m", "15m", "1h", "1d"])
+    market_timeframes: CsvList = Field(default_factory=lambda: ["1m", "5m", "15m", "1h", "1d"])
     # Underlyings whose option chains are polled.
-    option_chain_underlyings: list[str] = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY"])
+    option_chain_underlyings: CsvList = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY"])
     option_chain_poll_seconds: float = 5.0
     # Risk-free rate used for option greeks.
     risk_free_rate: float = 0.065
@@ -99,7 +106,7 @@ class Settings(BaseSettings):
     # Benchmark index for regime detection and relative strength.
     alpha_benchmark: str = "NIFTY"
     # Strategy allow-list; empty = every registered strategy is enabled.
-    alpha_enabled_strategies: list[str] = Field(default_factory=list)
+    alpha_enabled_strategies: CsvList = Field(default_factory=list)
 
     # ---- Broker / Zerodha Kite Connect (Sprint 6) ----
     # market_provider selects the broker: "simulated" / "paper" (built-in paper
@@ -113,7 +120,7 @@ class Settings(BaseSettings):
     # Subscribe to F&O instruments in addition to equity/index.
     broker_subscribe_fno: bool = False
     # Extra symbols to subscribe beyond Nifty 500 (configurable watchlist).
-    broker_watchlist: list[str] = Field(default_factory=list)
+    broker_watchlist: CsvList = Field(default_factory=list)
 
     # ---- Paper trading & analytics (Sprint 7) ----
     # Starting capital for a paper account (INR). Returns/drawdown are computed
@@ -140,9 +147,17 @@ class Settings(BaseSettings):
     )
     @classmethod
     def _split_csv(cls, value: object) -> object:
-        """Allow comma-separated strings for list-typed settings."""
-        if isinstance(value, str) and not value.startswith("["):
-            return [item.strip() for item in value.split(",") if item.strip()]
+        """Accept a comma-separated string OR a JSON array for list settings.
+
+        These fields use ``NoDecode`` so pydantic-settings does not JSON-decode the
+        raw env value before this runs — so we handle both forms here: a JSON array
+        (``["a","b"]``) is parsed as JSON; anything else is split on commas.
+        """
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("["):
+                return json.loads(text)
+            return [item.strip() for item in text.split(",") if item.strip()]
         return value
 
     @field_validator("database_url")

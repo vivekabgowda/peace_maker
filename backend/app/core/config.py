@@ -115,6 +115,21 @@ class Settings(BaseSettings):
     # Extra symbols to subscribe beyond Nifty 500 (configurable watchlist).
     broker_watchlist: list[str] = Field(default_factory=list)
 
+    # ---- Paper trading & analytics (Sprint 7) ----
+    # Starting capital for a paper account (INR). Returns/drawdown are computed
+    # against this.
+    paper_starting_cash: float = 1_000_000.0
+    # Blended per-side cost (bps of notional) applied to paper fills.
+    paper_fee_bps: float = 3.0
+    # Market-order slippage (bps) modelled against the taker on paper fills.
+    paper_slippage_bps: float = 1.0
+    # Run the tick-driven paper position manager inside the feed process.
+    paper_trading_enabled: bool = True
+    # Generate daily/weekly performance reports automatically in the feed.
+    report_scheduler_enabled: bool = True
+    # How often the report scheduler checks whether a report is due (seconds).
+    report_scheduler_interval_seconds: float = 900.0
+
     @field_validator(
         "cors_origins",
         "market_timeframes",

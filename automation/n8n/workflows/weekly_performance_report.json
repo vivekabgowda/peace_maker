@@ -1,0 +1,48 @@
+{
+  "name": "BKN — Weekly Performance Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 18 * * SAT" }
+          ]
+        }
+      },
+      "id": "schedule-weekly",
+      "name": "Every Saturday 18:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8000/api/v1/analytics/reports/generate?kind=weekly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "generate-report",
+      "name": "Generate Weekly Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bkn-service-token",
+          "name": "BKN Service Token (Authorization: Bearer …)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Saturday 18:00 IST": {
+      "main": [[{ "node": "Generate Weekly Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "timezone": "Asia/Kolkata" },
+  "meta": {
+    "description": "Generates and stores the weekly paper-trading performance report. NOTE: the feed process also generates this automatically (app.workers.reports); this workflow is an alternative external trigger. Configure a 'BKN Service Token' header-auth credential (Authorization: Bearer <access token of a service user>) — never embed the token in this JSON."
+  }
+}

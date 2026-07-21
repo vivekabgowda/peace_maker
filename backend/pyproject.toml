@@ -84,6 +84,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]  # hardcoded test credentials are fine
 "migrations/**" = ["E501", "N999"]
+"app/workers/reports.py" = ["T201"]  # CLI entrypoint prints to stdout by design
 
 # ---------------------------------------------------------------------------
 # Black — formatting

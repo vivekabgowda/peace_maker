@@ -1,4 +1,8 @@
-"""journal module — scaffolded for a later sprint (see docs/11-roadmap.md).
+"""Trade journal — the book of record for closed trades (Sprint 7)."""
 
-No implementation in Sprint 1.
-"""
+from __future__ import annotations
+
+from app.modules.journal.models import ClosedTrade, JournalRecord, Outcome
+from app.modules.journal.service import JournalService
+
+__all__ = ["ClosedTrade", "JournalRecord", "JournalService", "Outcome"]

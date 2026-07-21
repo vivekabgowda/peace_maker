@@ -25,6 +25,7 @@ from app.modules.market_data.instrument_master import InstrumentMasterService
 from app.modules.market_data.option_chain_engine import OptionChainEngine
 from app.modules.market_data.providers import MarketProvider, create_provider
 from app.modules.market_data.repository import MarketDataRepository
+from app.modules.paper_trading.runner import PaperTradingRunner
 from app.shared.events import CandleClosed, QuoteUpdated, event_bus
 from app.shared.market_calendar import SessionPhase, is_market_open, session_phase
 from app.shared.supervision import Backoff, Supervisor
@@ -53,6 +54,7 @@ class FeedService:
         self._builder = CandleBuilder(self._collect_close, self._settings.market_timeframes)
         self._indicator_engine = IndicatorEngine(async_session_factory)
         self._supervisor = Supervisor()
+        self._paper_runner: PaperTradingRunner | None = None
         self._started = False
 
     # -- Lifecycle ----------------------------------------------------------
@@ -70,6 +72,11 @@ class FeedService:
         event_bus.subscribe(
             CandleClosed, self._indicator_engine.on_candle_closed, name="indicator_engine"
         )
+        # Paper-trading position manager consumes live quotes off the same bus
+        # (Sprint 7): marks open paper positions and closes them on stop/target.
+        if self._settings.paper_trading_enabled:
+            self._paper_runner = PaperTradingRunner(async_session_factory)
+            self._paper_runner.attach(event_bus)
         # Cross-instance fan-out (R3): mirror WS-facing events to the Redis stream
         # so every API worker can deliver them to its own clients.
         if self._settings.event_stream_enabled:
@@ -91,6 +98,18 @@ class FeedService:
         self._supervisor.add(
             "news_poll", self._run_news_poll, backoff=Backoff(base=2, max_delay=30)
         )
+        # Sprint 7 loops: keep the paper-position set fresh and generate
+        # daily/weekly performance reports automatically.
+        if self._paper_runner is not None:
+            self._supervisor.add(
+                "paper_manager", self._run_paper_manager, backoff=Backoff(base=1, max_delay=15)
+            )
+        if self._settings.report_scheduler_enabled:
+            self._supervisor.add(
+                "report_scheduler",
+                self._run_report_scheduler,
+                backoff=Backoff(base=5, max_delay=60),
+            )
         self._supervisor.start_all()
         self._started = True
         logger.info("feed_started", provider=self._provider.name, symbols=len(self._symbol_ids))
@@ -184,6 +203,28 @@ class FeedService:
                 await NewsService(session).ingest(provider)
                 await session.commit()
             await asyncio.sleep(self._settings.news_poll_seconds)
+
+    async def _run_paper_manager(self) -> None:
+        # Refresh which symbols have open paper positions; the actual stop/target
+        # marking happens on the bus quote handler (runner.attach).
+        assert self._paper_runner is not None
+        task = self._supervisor.get("paper_manager")
+        while True:
+            task.heartbeat()
+            await self._paper_runner.refresh_active_symbols()
+            await asyncio.sleep(10.0)
+
+    async def _run_report_scheduler(self) -> None:
+        from app.workers.reports import ReportScheduler
+
+        task = self._supervisor.get("report_scheduler")
+        scheduler = ReportScheduler(async_session_factory)
+        while True:
+            task.heartbeat()
+            generated = await scheduler.tick()
+            if generated:
+                logger.info("reports_generated", kinds=generated)
+            await asyncio.sleep(self._settings.report_scheduler_interval_seconds)
 
     # -- Processing ---------------------------------------------------------
     async def _handle_quote(self, quote: object) -> None:

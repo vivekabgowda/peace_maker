@@ -58,6 +58,12 @@ services:
       - ./backend:/app
     ports:
       - '8000:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health/live').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,9 +82,16 @@ services:
       BKN_DATABASE_URL: postgresql+asyncpg://${BKN_DB_USER:-bkn}:${BKN_DB_PASSWORD:-bkn}@postgres:5432/${BKN_DB_NAME:-bkn}
       BKN_REDIS_URL: redis://redis:6379/0
       BKN_JWT_SECRET_KEY: ${BKN_JWT_SECRET_KEY:-dev-secret-change-me-1234567890}
-      BKN_MARKET_PROVIDER: simulated
+      BKN_MARKET_PROVIDER: ${BKN_MARKET_PROVIDER:-simulated}
       BKN_MARKET_TICK_INTERVAL: '1.0'
       BKN_EVENT_STREAM_ENABLED: 'true'
+      # Sprint 7 — paper trading + automatic performance reports run in the feed.
+      BKN_PAPER_TRADING_ENABLED: 'true'
+      BKN_REPORT_SCHEDULER_ENABLED: 'true'
+      # Broker (Sprint 6) — only used when BKN_MARKET_PROVIDER=zerodha.
+      BKN_ZERODHA_API_KEY: ${BKN_ZERODHA_API_KEY:-}
+      BKN_ZERODHA_API_SECRET: ${BKN_ZERODHA_API_SECRET:-}
+      BKN_BROKER_ENC_KEY: ${BKN_BROKER_ENC_KEY:-}
     volumes:
       - ./backend:/app
     ports:
@@ -108,8 +121,15 @@ services:
       - /app/node_modules
     ports:
       - '3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:3000 || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
   n8n:
     image: n8nio/n8n:latest

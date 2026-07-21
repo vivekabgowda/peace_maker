@@ -95,10 +95,17 @@ class Settings(BaseSettings):
     # running the feed + >1 API worker; off = single-process in-memory bus only.
     event_stream_enabled: bool = False
 
+    # ---- Alpha Engine (Sprint 3) ----
+    # Benchmark index for regime detection and relative strength.
+    alpha_benchmark: str = "NIFTY"
+    # Strategy allow-list; empty = every registered strategy is enabled.
+    alpha_enabled_strategies: list[str] = Field(default_factory=list)
+
     @field_validator(
         "cors_origins",
         "market_timeframes",
         "option_chain_underlyings",
+        "alpha_enabled_strategies",
         mode="before",
     )
     @classmethod

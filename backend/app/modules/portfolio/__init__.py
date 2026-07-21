@@ -1,4 +1,12 @@
-"""portfolio module — scaffolded for a later sprint (see docs/11-roadmap.md).
+"""Portfolio awareness subsystem (Sprint 3, Step 7)."""
 
-No implementation in Sprint 1.
-"""
+from __future__ import annotations
+
+from app.modules.portfolio.awareness import (
+    Held,
+    PortfolioConstraints,
+    PortfolioManager,
+    PortfolioResult,
+)
+
+__all__ = ["Held", "PortfolioConstraints", "PortfolioManager", "PortfolioResult"]

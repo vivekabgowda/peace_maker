@@ -1,4 +1,7 @@
-"""ai_engine module — scaffolded for a later sprint (see docs/11-roadmap.md).
+"""AI evaluation subsystem — the 11-factor scoring engine (Sprint 3, Step 4)."""
 
-No implementation in Sprint 1.
-"""
+from __future__ import annotations
+
+from app.modules.ai_engine.scoring import PortfolioImpact, ScoreCard, ScoringEngine
+
+__all__ = ["PortfolioImpact", "ScoreCard", "ScoringEngine"]

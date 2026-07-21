@@ -23,9 +23,16 @@ dependencies = [
     "python-multipart>=0.0.12,<0.1",
     "structlog>=24.4,<25.0",
     "prometheus-client>=0.21,<0.22",
+    "cryptography>=44.0,<46.0",
 ]
 
 [project.optional-dependencies]
+# Zerodha Kite Connect SDK — optional; the broker adapter lazily imports it and
+# raises a clear ProviderError if it is missing. Not installed in CI (no network
+# to Zerodha); the adapter is fully tested via fake ports.
+zerodha = [
+    "kiteconnect>=5.0,<6.0",
+]
 dev = [
     "pytest>=8.3,<9.0",
     "pytest-asyncio>=0.24,<0.25",
@@ -99,7 +106,7 @@ no_implicit_optional = true
 exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["passlib.*", "uvicorn"]
+module = ["passlib.*", "uvicorn", "kiteconnect.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

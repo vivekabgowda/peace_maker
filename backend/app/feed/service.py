@@ -57,6 +57,7 @@ class FeedService:
 
     # -- Lifecycle ----------------------------------------------------------
     async def start(self) -> None:
+        await self._attach_broker_token()
         await self._provider.connect()
         metrics.PROVIDER_CONNECTED.set(1)
         async with async_session_factory() as session:
@@ -93,6 +94,30 @@ class FeedService:
         self._supervisor.start_all()
         self._started = True
         logger.info("feed_started", provider=self._provider.name, symbols=len(self._symbol_ids))
+
+    async def _attach_broker_token(self) -> None:
+        """For a live broker provider, load the encrypted daily token and attach it
+        before connecting. If none is stored, the provider's connect() will raise a
+        clear instruction to complete the login flow."""
+        if self._settings.market_provider != "zerodha":
+            return
+        set_token = getattr(self._provider, "set_access_token", None)
+        if not callable(set_token):
+            return
+        from app.modules.broker.token_store import Cipher, DbTokenStore
+
+        key = self._settings.broker_enc_key
+        if not key:
+            logger.warning("broker_enc_key_unset_cannot_attach_token")
+            return
+        async with async_session_factory() as session:
+            store = DbTokenStore(session, Cipher(key))
+            broker_session = await store.load("zerodha")
+        if broker_session and broker_session.is_valid:
+            set_token(broker_session.access_token)
+            logger.info("zerodha_token_attached", kite_user=broker_session.kite_user_id)
+        else:
+            logger.warning("zerodha_token_missing_or_expired_complete_login_flow")
 
     async def stop(self) -> None:
         await self._supervisor.stop_all()

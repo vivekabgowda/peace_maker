@@ -91,6 +91,19 @@ def test_session_vwap_resets_each_session() -> None:
     assert v3 == pytest.approx(300)  # reset, not 200
 
 
+def _under_coverage() -> bool:
+    """True when pytest-cov is tracing — wall-clock timing is meaningless then."""
+    try:
+        import coverage
+
+        return coverage.Coverage.current() is not None
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(
+    _under_coverage(), reason="wall-clock timing is meaningless under coverage line-tracing"
+)
 def test_rolling_update_under_5ms() -> None:
     highs, lows, closes = _series(300)
     state = RollingIndicatorState()

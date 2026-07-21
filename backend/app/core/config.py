@@ -101,11 +101,26 @@ class Settings(BaseSettings):
     # Strategy allow-list; empty = every registered strategy is enabled.
     alpha_enabled_strategies: list[str] = Field(default_factory=list)
 
+    # ---- Broker / Zerodha Kite Connect (Sprint 6) ----
+    # market_provider selects the broker: "simulated" / "paper" (built-in paper
+    # broker) or "zerodha" (live Kite market data — NO order placement).
+    zerodha_api_key: str = ""
+    zerodha_api_secret: str = ""
+    zerodha_redirect_url: str = "http://localhost:8000/api/v1/broker/zerodha/callback"
+    # Fernet key for encrypting broker tokens at rest (generate with
+    # `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+    broker_enc_key: str = ""
+    # Subscribe to F&O instruments in addition to equity/index.
+    broker_subscribe_fno: bool = False
+    # Extra symbols to subscribe beyond Nifty 500 (configurable watchlist).
+    broker_watchlist: list[str] = Field(default_factory=list)
+
     @field_validator(
         "cors_origins",
         "market_timeframes",
         "option_chain_underlyings",
         "alpha_enabled_strategies",
+        "broker_watchlist",
         mode="before",
     )
     @classmethod

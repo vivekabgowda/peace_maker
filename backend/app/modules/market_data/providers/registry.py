@@ -25,7 +25,22 @@ def available_providers() -> list[str]:
     return sorted(_REGISTRY)
 
 
+# Broker providers live in app.modules.broker and register lazily to avoid a
+# market_data → broker import cycle at module load (and to keep the Kite SDK out
+# of the import path unless a broker provider is actually requested).
+_BROKER_PROVIDERS = frozenset({"zerodha", "paper"})
+
+
+def _ensure_registered(name: str) -> None:
+    if name in _REGISTRY or name not in _BROKER_PROVIDERS:
+        return
+    from app.modules.broker.factory import register_broker_providers
+
+    register_broker_providers()
+
+
 def create_provider(name: str) -> MarketProvider:
+    _ensure_registered(name)
     try:
         factory = _REGISTRY[name]
     except KeyError as exc:

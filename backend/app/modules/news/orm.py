@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.core.database import Base, TimestampMixin
-from sqlalchemy import String, Text
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -23,4 +23,4 @@ class NewsArticle(Base, TimestampMixin):
     impact: Mapped[Decimal] = mapped_column(default=Decimal("0"), nullable=False)
     symbols: Mapped[str] = mapped_column(String(500), default="", nullable=False)  # CSV
     sectors: Mapped[str] = mapped_column(String(500), default="", nullable=False)  # CSV
-    published_at: Mapped[datetime] = mapped_column(nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

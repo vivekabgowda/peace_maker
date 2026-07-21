@@ -13,6 +13,7 @@ from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    DateTime,
     ForeignKey,
     Integer,
     Numeric,
@@ -25,6 +26,10 @@ from app.core.database import Base, TimestampMixin
 
 # BigInteger PKs need INTEGER on SQLite for rowid autoincrement (test suite).
 _BigIntPK = BigInteger().with_variant(Integer, "sqlite")
+# Timezone-aware timestamps everywhere, matching the migrations. Without this the
+# ORM (and create_all in tests) would emit naive TIMESTAMP on Postgres, and
+# asyncpg rejects writing tz-aware datetimes into a naive column.
+_UtcTimestamp = DateTime(timezone=True)
 
 
 class Instrument(Base, TimestampMixin):
@@ -57,7 +62,7 @@ class Candle(Base):
         BigInteger, ForeignKey("instruments.id", ondelete="CASCADE"), primary_key=True
     )
     timeframe: Mapped[str] = mapped_column(String(8), primary_key=True)
-    ts: Mapped[datetime] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_UtcTimestamp, primary_key=True)
     open: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     high: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     low: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
@@ -72,7 +77,7 @@ class MarketIndicator(Base):
         BigInteger, ForeignKey("instruments.id", ondelete="CASCADE"), primary_key=True
     )
     timeframe: Mapped[str] = mapped_column(String(8), primary_key=True)
-    ts: Mapped[datetime] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_UtcTimestamp, primary_key=True)
     ema_9: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     ema_21: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     ema_50: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
@@ -95,7 +100,7 @@ class OptionChainSnapshotRow(Base):
     # column); no surrogate autoincrement id keeps it portable to SQLite.
     underlying: Mapped[str] = mapped_column(String(64), primary_key=True)
     expiry: Mapped[str] = mapped_column(String(20), primary_key=True)
-    ts: Mapped[datetime] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_UtcTimestamp, primary_key=True)
     spot: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     pcr: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     max_pain: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)

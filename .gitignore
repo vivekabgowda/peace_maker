@@ -38,3 +38,6 @@ infra/certs/
 dist/
 build/
 *.log
+
+# Local Redis dump (created when running redis-server for tests)
+dump.rdb

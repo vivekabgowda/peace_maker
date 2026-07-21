@@ -173,7 +173,8 @@ def check_analytics_and_report(token: str) -> None:
 
 # -- 5. No live orders ------------------------------------------------------
 def assert_no_live_order_path(token: str) -> None:
-    openapi = _request("GET", f"{BASE}/openapi.json")
+    # The app serves its OpenAPI schema under the API prefix (/api/v1/openapi.json).
+    openapi = _request("GET", "/openapi.json")
     paths = openapi.get("paths", {})
     offenders = [
         p

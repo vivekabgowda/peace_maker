@@ -21,6 +21,20 @@ tooling. No market/scanner/AI/trading logic yet — that follows the roadmap.
 - **What's done / what's left for prod:** [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
 - **Coding standards:** [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
 
+**Sprint 2 — Real-Time Market Intelligence** is also implemented: provider
+abstraction (+ simulated reference feed), event bus, instrument master, live
+quote cache, multi-timeframe candle builder, 14-indicator engine, option-chain
+engine (PCR/max-pain/greeks), news engine, WebSocket gateway, and a live
+dashboard. See [docs/SPRINT2_MARKET_INTELLIGENCE.md](docs/SPRINT2_MARKET_INTELLIGENCE.md).
+
+**Sprints 3–7** build the advisory + validation stack on top:
+- **3 — Alpha Engine:** strategy plugins, regime engine, 11-factor scoring, scanner + Opportunity Book. [docs/SPRINT3_ALPHA_ENGINE.md](docs/SPRINT3_ALPHA_ENGINE.md)
+- **4 — AI Committee:** seven specialist agents + CIO synthesis. [docs/SPRINT4_AI_COMMITTEE.md](docs/SPRINT4_AI_COMMITTEE.md)
+- **5 — Backtesting:** bar-by-bar replay, trade simulator, earned strategy stats. [docs/SPRINT5_BACKTESTING.md](docs/SPRINT5_BACKTESTING.md)
+- **6 — Zerodha Kite Connect:** live market data + OAuth + historical ingestion, **no order placement**. [docs/SPRINT6_ZERODHA.md](docs/SPRINT6_ZERODHA.md)
+- **7 — Local Deployment & Validation:** one-command `make up`/`make down`, health checks, **paper-trading engine**, trade journal, performance analytics, and **automatic daily/weekly reports** — advisory-only, no live orders. [docs/SPRINT7_LOCAL_DEPLOYMENT.md](docs/SPRINT7_LOCAL_DEPLOYMENT.md)
+- **8 — Local Environment Bring-up:** clean-machine macOS guide, `/health/diagnostics` endpoint, and a **live diagnostics page** (`/diagnostics`) verifying frontend↔backend, database, Redis, and the simulated market-data pipeline end-to-end — no live broker. [docs/SPRINT8_MAC_SETUP.md](docs/SPRINT8_MAC_SETUP.md)
+
 Verified gates: backend **Ruff · Black · MyPy(strict) · Pytest (19 tests, 88%)**;
 frontend **ESLint · tsc · Vitest · `next build`**; Compose files validated.
 

@@ -1,4 +1,15 @@
-"""analytics module — scaffolded for a later sprint (see docs/11-roadmap.md).
+"""Performance analytics — metrics, reports, dashboard data (Sprint 7)."""
 
-No implementation in Sprint 1.
-"""
+from __future__ import annotations
+
+from app.modules.analytics.metrics import PerformanceMetrics, TradeStat
+from app.modules.analytics.reports import ReportService, due_reports
+from app.modules.analytics.service import AnalyticsService
+
+__all__ = [
+    "AnalyticsService",
+    "PerformanceMetrics",
+    "ReportService",
+    "TradeStat",
+    "due_reports",
+]

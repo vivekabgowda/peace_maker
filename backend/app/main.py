@@ -29,10 +29,48 @@ logger = get_logger(__name__)
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("startup", env=settings.env, version=settings.version)
-    yield
-    await dispose_engine()
-    await close_redis()
-    logger.info("shutdown")
+
+    # Start the event bus workers and bridge market events → WebSocket clients.
+    from app.shared.events import event_bus
+    from app.websocket.gateway import register_ws_bridge
+
+    await event_bus.start()
+    register_ws_bridge()
+
+    # NOTE: the live market feed no longer runs in the API process. It runs as a
+    # dedicated Feed Service (app.feed) with a single-instance lock — see R0 #1.
+    if settings.market_feed_enabled:
+        logger.warning(
+            "market_feed_enabled_in_api_ignored",
+            detail="Run the dedicated feed service (python -m app.feed); the API never ingests.",
+        )
+
+    # Cross-instance fan-out (R3): consume the Redis event stream into the local
+    # bus so this API worker's WebSocket clients receive feed events.
+    supervisor = None
+    if settings.event_stream_enabled:
+        from app.shared.events.stream import EventStreamBridge
+        from app.shared.supervision import Supervisor
+
+        bridge = EventStreamBridge()
+        supervisor = Supervisor()
+
+        async def _consume() -> None:
+            await bridge.run_consumer(event_bus.publish, is_running=lambda: True)
+
+        supervisor.add("event_stream_consumer", _consume)
+        supervisor.start_all()
+        logger.info("event_stream_consumer_started")
+
+    try:
+        yield
+    finally:
+        if supervisor is not None:
+            await supervisor.stop_all()
+        await event_bus.stop()
+        await dispose_engine()
+        await close_redis()
+        logger.info("shutdown")
 
 
 def create_app() -> FastAPI:

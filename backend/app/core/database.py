@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import datetime
 
-from sqlalchemy import MetaData, func
+from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 
@@ -41,9 +42,11 @@ class Base(DeclarativeBase):
 class TimestampMixin:
     """Adds ``created_at`` / ``updated_at`` columns managed by the database."""
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
 
@@ -53,6 +56,12 @@ def _create_engine() -> AsyncEngine:
     # SQLite (used by the test suite) does not accept pool sizing kwargs.
     if url.startswith("sqlite"):
         return create_async_engine(url, echo=settings.db_echo, future=True)
+    # Under test, pytest-asyncio runs each test on its own event loop. A pooled
+    # asyncpg connection created on one loop cannot be reused (or pre-ping'd) on
+    # the next — it raises "Event loop is closed". NullPool opens and closes a
+    # fresh connection per checkout on the current loop, avoiding cross-loop reuse.
+    if settings.env == "test":
+        return create_async_engine(url, echo=settings.db_echo, future=True, poolclass=NullPool)
     return create_async_engine(
         url,
         echo=settings.db_echo,

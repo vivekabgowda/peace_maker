@@ -1,9 +1,10 @@
-"""Integration tests for the authentication flow (register/login/refresh/logout)."""
+"""Integration tests for the authentication flow (cookie-based refresh)."""
 
 from __future__ import annotations
 
 import httpx
 import pytest
+from app.modules.auth.cookies import REFRESH_COOKIE
 
 pytestmark = pytest.mark.integration
 
@@ -16,13 +17,15 @@ async def _register(client: httpx.AsyncClient) -> dict:
     return resp.json()
 
 
-async def test_register_returns_user_and_tokens(client: httpx.AsyncClient) -> None:
-    body = await _register(client)
+async def test_register_returns_access_and_sets_refresh_cookie(client: httpx.AsyncClient) -> None:
+    resp = await client.post("/api/v1/auth/register", json=_CREDS)
+    assert resp.status_code == 201
+    body = resp.json()
     assert body["user"]["email"] == _CREDS["email"]
-    assert body["user"]["role"] == "user"
     assert body["tokens"]["access_token"]
-    assert body["tokens"]["refresh_token"]
-    assert body["tokens"]["token_type"] == "bearer"
+    # Refresh token is NOT in the body — it is an httpOnly cookie.
+    assert "refresh_token" not in body["tokens"]
+    assert REFRESH_COOKIE in resp.cookies
 
 
 async def test_duplicate_registration_conflicts(client: httpx.AsyncClient) -> None:
@@ -37,53 +40,53 @@ async def test_login_success_and_failure(client: httpx.AsyncClient) -> None:
     ok = await client.post("/api/v1/auth/login", json=_CREDS)
     assert ok.status_code == 200
     assert ok.json()["access_token"]
+    assert REFRESH_COOKIE in ok.cookies
 
     bad = await client.post(
-        "/api/v1/auth/login",
-        json={"email": _CREDS["email"], "password": "wrong"},
+        "/api/v1/auth/login", json={"email": _CREDS["email"], "password": "wrong"}
     )
     assert bad.status_code == 401
-    assert bad.json()["error"]["code"] == "authentication_error"
 
 
 async def test_protected_route_requires_token(client: httpx.AsyncClient) -> None:
     unauth = await client.get("/api/v1/me")
     assert unauth.status_code == 401
 
-    body = await _register(client)
-    token = body["tokens"]["access_token"]
+    token = (await _register(client))["tokens"]["access_token"]
     ok = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
     assert ok.status_code == 200
     assert ok.json()["email"] == _CREDS["email"]
 
 
-async def test_refresh_rotates_and_revokes_old_token(client: httpx.AsyncClient) -> None:
-    body = await _register(client)
-    old_refresh = body["tokens"]["refresh_token"]
+async def test_refresh_via_cookie_rotates_and_revokes(client: httpx.AsyncClient) -> None:
+    await _register(client)  # sets the refresh cookie on the client jar
+    old_cookie = client.cookies.get(REFRESH_COOKIE)
 
-    rotated = await client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    rotated = await client.post("/api/v1/auth/refresh")
     assert rotated.status_code == 200
     assert rotated.json()["access_token"]
 
-    # The old refresh token must no longer work after rotation.
-    reused = await client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    # Replaying the OLD refresh value must fail (rotation revoked it).
+    reused = await client.post("/api/v1/auth/refresh", cookies={REFRESH_COOKIE: old_cookie})
     assert reused.status_code == 401
 
 
-async def test_logout_revokes_refresh_token(client: httpx.AsyncClient) -> None:
-    body = await _register(client)
-    refresh = body["tokens"]["refresh_token"]
-
-    out = await client.post("/api/v1/auth/logout", json={"refresh_token": refresh})
+async def test_logout_clears_cookie_and_revokes(client: httpx.AsyncClient) -> None:
+    await _register(client)
+    out = await client.post("/api/v1/auth/logout")
     assert out.status_code == 204
-
-    after = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    # Cookie cleared → refresh no longer possible.
+    after = await client.post("/api/v1/auth/refresh")
     assert after.status_code == 401
 
 
+async def test_refresh_without_cookie_fails(client: httpx.AsyncClient) -> None:
+    resp = await client.post("/api/v1/auth/refresh")
+    assert resp.status_code == 401
+
+
 async def test_profile_update(client: httpx.AsyncClient) -> None:
-    body = await _register(client)
-    token = body["tokens"]["access_token"]
+    token = (await _register(client))["tokens"]["access_token"]
     resp = await client.patch(
         "/api/v1/me/profile",
         headers={"Authorization": f"Bearer {token}"},

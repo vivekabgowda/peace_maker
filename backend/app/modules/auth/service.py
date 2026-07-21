@@ -8,10 +8,12 @@ about HTTP.
 from __future__ import annotations
 
 import hashlib
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.database import async_session_factory
 from app.core.errors import AuthenticationError, ConflictError
 from app.core.security import (
     TokenError,
@@ -75,6 +77,18 @@ class AuthService:
         jti = payload.get("jti", "")
         stored = await self._tokens.get_active_by_jti(jti)
         if stored is None or stored.token_hash != _hash_token(refresh_token):
+            # A validly-signed refresh token whose jti is no longer active is a
+            # reuse of an already-rotated token → likely theft. Revoke the whole
+            # session family so a stolen token can't be leveraged further. This
+            # must persist even though we raise, so it runs in its own committed
+            # transaction (the request transaction rolls back on the raise).
+            subject = payload.get("sub")
+            if subject:
+                async with async_session_factory() as revoke_session:
+                    await RefreshTokenRepository(revoke_session).revoke_all_for_user(
+                        uuid.UUID(str(subject))
+                    )
+                    await revoke_session.commit()
             raise AuthenticationError("Refresh token is invalid or has been revoked.")
 
         user = await self._users.get_by_id(payload["sub"])

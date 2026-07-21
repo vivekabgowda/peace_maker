@@ -9,10 +9,13 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["local", "test", "staging", "production"]
+
+# The development-only JWT secret; forbidden in staging/production.
+_DEFAULT_JWT_SECRET = "change-me-in-production-this-is-not-a-secret"  # noqa: S105
 
 
 class Settings(BaseSettings):
@@ -59,10 +62,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # -- Security / JWT ------------------------------------------------------
-    jwt_secret_key: str = Field(
-        default="change-me-in-production-this-is-not-a-secret",
-        min_length=16,
-    )
+    jwt_secret_key: str = Field(default=_DEFAULT_JWT_SECRET, min_length=16)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
@@ -71,12 +71,78 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = True
 
-    @field_validator("cors_origins", mode="before")
+    # -- Market data (Sprint 2) ---------------------------------------------
+    # Active market-data provider (resolved via the provider registry). The
+    # rest of the app never depends on a concrete broker.
+    market_provider: str = "simulated"
+    # Start the live market feed runner on application startup.
+    market_feed_enabled: bool = False
+    # Simulated provider tick cadence (seconds).
+    market_tick_interval: float = 1.0
+    # Timeframes the candle builder maintains.
+    market_timeframes: list[str] = Field(default_factory=lambda: ["1m", "5m", "15m", "1h", "1d"])
+    # Underlyings whose option chains are polled.
+    option_chain_underlyings: list[str] = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY"])
+    option_chain_poll_seconds: float = 5.0
+    # Risk-free rate used for option greeks.
+    risk_free_rate: float = 0.065
+    # News ingestion (polled by the feed service).
+    news_provider: str = "simulated"
+    news_poll_seconds: float = 30.0
+    # TTL for the live quote hot-cache (stale data must not linger if feed stops).
+    quote_cache_ttl_seconds: int = 30
+    # Redis-Streams event transport for cross-instance fan-out (R3). Enable when
+    # running the feed + >1 API worker; off = single-process in-memory bus only.
+    event_stream_enabled: bool = False
+
+    # ---- Alpha Engine (Sprint 3) ----
+    # Benchmark index for regime detection and relative strength.
+    alpha_benchmark: str = "NIFTY"
+    # Strategy allow-list; empty = every registered strategy is enabled.
+    alpha_enabled_strategies: list[str] = Field(default_factory=list)
+
+    # ---- Broker / Zerodha Kite Connect (Sprint 6) ----
+    # market_provider selects the broker: "simulated" / "paper" (built-in paper
+    # broker) or "zerodha" (live Kite market data — NO order placement).
+    zerodha_api_key: str = ""
+    zerodha_api_secret: str = ""
+    zerodha_redirect_url: str = "http://localhost:8000/api/v1/broker/zerodha/callback"
+    # Fernet key for encrypting broker tokens at rest (generate with
+    # `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+    broker_enc_key: str = ""
+    # Subscribe to F&O instruments in addition to equity/index.
+    broker_subscribe_fno: bool = False
+    # Extra symbols to subscribe beyond Nifty 500 (configurable watchlist).
+    broker_watchlist: list[str] = Field(default_factory=list)
+
+    # ---- Paper trading & analytics (Sprint 7) ----
+    # Starting capital for a paper account (INR). Returns/drawdown are computed
+    # against this.
+    paper_starting_cash: float = 1_000_000.0
+    # Blended per-side cost (bps of notional) applied to paper fills.
+    paper_fee_bps: float = 3.0
+    # Market-order slippage (bps) modelled against the taker on paper fills.
+    paper_slippage_bps: float = 1.0
+    # Run the tick-driven paper position manager inside the feed process.
+    paper_trading_enabled: bool = True
+    # Generate daily/weekly performance reports automatically in the feed.
+    report_scheduler_enabled: bool = True
+    # How often the report scheduler checks whether a report is due (seconds).
+    report_scheduler_interval_seconds: float = 900.0
+
+    @field_validator(
+        "cors_origins",
+        "market_timeframes",
+        "option_chain_underlyings",
+        "alpha_enabled_strategies",
+        "broker_watchlist",
+        mode="before",
+    )
     @classmethod
-    def _split_cors(cls, value: object) -> object:
-        """Allow a comma-separated string for ``BKN_CORS_ORIGINS``."""
+    def _split_csv(cls, value: object) -> object:
+        """Allow comma-separated strings for list-typed settings."""
         if isinstance(value, str) and not value.startswith("["):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
     @field_validator("database_url")
@@ -86,6 +152,16 @@ class Settings(BaseSettings):
         if not value.startswith(allowed):
             raise ValueError(f"database_url must use one of {allowed}")
         return value
+
+    @model_validator(mode="after")
+    def _guard_prod_secrets(self) -> Settings:
+        """Fail fast if a real environment ships the dev JWT default (R1/security)."""
+        if self.env in ("staging", "production") and self.jwt_secret_key == _DEFAULT_JWT_SECRET:
+            raise ValueError(
+                "BKN_JWT_SECRET_KEY must be set to a strong secret in staging/production "
+                "(the development default is not allowed). Generate one with: openssl rand -hex 32"
+            )
+        return self
 
     @property
     def is_production(self) -> bool:

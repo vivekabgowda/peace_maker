@@ -23,15 +23,23 @@ dependencies = [
     "python-multipart>=0.0.12,<0.1",
     "structlog>=24.4,<25.0",
     "prometheus-client>=0.21,<0.22",
+    "cryptography>=44.0,<46.0",
 ]
 
 [project.optional-dependencies]
+# Zerodha Kite Connect SDK — optional; the broker adapter lazily imports it and
+# raises a clear ProviderError if it is missing. Not installed in CI (no network
+# to Zerodha); the adapter is fully tested via fake ports.
+zerodha = [
+    "kiteconnect>=5.0,<6.0",
+]
 dev = [
     "pytest>=8.3,<9.0",
     "pytest-asyncio>=0.24,<0.25",
     "pytest-cov>=6.0,<7.0",
     "httpx>=0.28,<0.29",
     "aiosqlite>=0.20,<0.21",
+    "fakeredis>=2.26,<3.0",
     "ruff>=0.8,<0.9",
     "black>=24.10,<25.0",
     "mypy>=1.13,<2.0",
@@ -70,11 +78,13 @@ select = [
 ignore = [
     "S101",  # asserts allowed (used in tests)
     "B008",  # FastAPI Depends() in defaults is idiomatic
+    "S311",  # pseudo-random is used for simulation/jitter, never for crypto
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]  # hardcoded test credentials are fine
 "migrations/**" = ["E501", "N999"]
+"app/workers/reports.py" = ["T201"]  # CLI entrypoint prints to stdout by design
 
 # ---------------------------------------------------------------------------
 # Black — formatting
@@ -97,7 +107,7 @@ no_implicit_optional = true
 exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["passlib.*"]
+module = ["passlib.*", "uvicorn", "kiteconnect.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

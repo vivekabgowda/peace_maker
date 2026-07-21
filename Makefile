@@ -1,6 +1,6 @@
 # BKN AI Capital — developer commands.
 .DEFAULT_GOAL := help
-.PHONY: help up down logs migrate seed backend-shell \
+.PHONY: help up down purge logs migrate seed validate report backend-shell \
         be-install be-test be-lint be-format be-typecheck \
         fe-install fe-test fe-lint fe-build test lint
 
@@ -12,16 +12,22 @@ help: ## Show this help
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 ## --- Docker (full stack) ---------------------------------------------------
-up: ## Start the dev stack (Postgres, Redis, backend, frontend, n8n)
-	./scripts/dev-up.sh -d
-down: ## Stop the dev stack
-	docker compose down
+up: ## Start the dev stack + wait for health (one command)
+	./scripts/dev-up.sh
+down: ## Stop the dev stack (keep data)
+	./scripts/dev-down.sh
+purge: ## Stop the dev stack and delete all volumes/data
+	./scripts/dev-down.sh --purge
 logs: ## Tail all logs
 	docker compose logs -f
 migrate: ## Apply DB migrations inside the backend container
 	docker compose exec backend alembic upgrade head
 seed: ## Seed the initial admin user
 	docker compose exec backend python -m scripts.seed
+validate: ## Run the end-to-end validation against the running stack
+	./scripts/validate.sh
+report: ## Generate a weekly performance report now (prints markdown)
+	docker compose exec feed python -m app.workers.reports --kind weekly
 backend-shell: ## Open a shell in the backend container
 	docker compose exec backend sh
 

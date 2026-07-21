@@ -2,11 +2,13 @@
 
 - ``/health/live``  — liveness: the process is up (no dependencies checked).
 - ``/health/ready`` — readiness: database and Redis are reachable.
+- ``/health/diagnostics`` — full system diagnostics (all subsystems), powering
+  the frontend diagnostics page (Sprint 8).
 """
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Response, status
 from pydantic import BaseModel
@@ -15,6 +17,7 @@ from sqlalchemy import text
 from app.core.config import get_settings
 from app.core.database import async_session_factory
 from app.core.redis import ping_redis
+from app.modules.health.diagnostics import gather_diagnostics
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -50,3 +53,15 @@ async def readiness(response: Response) -> ReadinessResponse:
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return ReadinessResponse(status="ready" if ready else "degraded", checks=checks)
+
+
+@router.get("/diagnostics", summary="Full system diagnostics (all subsystems)")
+async def diagnostics(response: Response) -> dict[str, Any]:
+    """Aggregate live status of the database, Redis, market feed, and event
+    stream. Unauthenticated (operational health only, no secrets) so the
+    diagnostics page works on a fresh machine before login. Returns 503 when a
+    core dependency is down."""
+    report = await gather_diagnostics()
+    if report.get("status") != "healthy":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return report

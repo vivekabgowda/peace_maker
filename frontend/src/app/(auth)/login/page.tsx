@@ -27,10 +27,10 @@ export default function LoginPage() {
     try {
       if (mode === 'register') {
         const { tokens, user } = await register(email, password);
-        setSession(tokens, user);
+        setSession(tokens.access_token, user);
       } else {
         const tokens = await login(email, password);
-        setSession(tokens);
+        setSession(tokens.access_token);
       }
       router.replace('/dashboard');
     } catch (err) {

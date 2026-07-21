@@ -1,14 +1,14 @@
 import { PageHeader } from '@/components/layout/PageHeader';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ChartView } from '@/features/charts/ChartView';
 
 export default function ChartsPage() {
   return (
     <div>
-      <PageHeader title="Charts" description="TradingView charts with platform indicators." />
-      <EmptyState
-        title="Charts — arriving in Sprint 6"
-        description="Sprint 1 delivers the foundation (auth, shell, navigation). This module's UI lands in Sprint 6 per the roadmap."
+      <PageHeader
+        title="Charts"
+        description="Candlesticks, volume, EMA 20/50, and your paper-trade markers."
       />
+      <ChartView />
     </div>
   );
 }

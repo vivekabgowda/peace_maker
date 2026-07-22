@@ -29,13 +29,14 @@ class BacktestService:
         self._repo = MarketDataRepository(session)
         self._settings = get_settings()
 
-    async def run(
-        self,
-        *,
-        strategy_key: str | None = None,
-        history: int = 400,
-        apply_stats: bool = False,
-    ) -> dict[str, Any]:
+    async def run_results(
+        self, *, strategy_key: str | None = None, history: int = 400
+    ) -> list[BacktestResult]:
+        """Backtest one/every enabled strategy and return the raw results.
+
+        The trade lists are needed by callers that post-process them (e.g. the
+        validation framework applies costs and out-of-sample analysis).
+        """
         instruments = await self._repo.list_instruments()
         benchmark_bars = await self._bars(
             _find_id(instruments, self._settings.alpha_benchmark), "1d", history
@@ -55,7 +56,16 @@ class BacktestService:
                     series_by_symbol[inst.symbol] = bars
             result = backtester.run(strat, series_by_symbol, benchmark=benchmark_bars)
             results.append(result)
+        return results
 
+    async def run(
+        self,
+        *,
+        strategy_key: str | None = None,
+        history: int = 400,
+        apply_stats: bool = False,
+    ) -> dict[str, Any]:
+        results = await self.run_results(strategy_key=strategy_key, history=history)
         updated = apply_to_registry(results) if apply_stats else []
         logger.info(
             "backtest_run",

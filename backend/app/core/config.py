@@ -128,8 +128,19 @@ class Settings(BaseSettings):
     paper_starting_cash: float = 1_000_000.0
     # Blended per-side cost (bps of notional) applied to paper fills.
     paper_fee_bps: float = 3.0
+    # Cost model applied to paper fills: "flat" (paper_fee_bps) or "realistic"
+    # (segment-specific Indian statutory charges — brokerage/STT/exchange/GST/
+    # SEBI/stamp). Default "flat" preserves existing behaviour; "realistic" is
+    # the honest cost stack used for validation (Sprint 14).
+    paper_cost_model: str = "flat"
+    # Default segment used by the realistic cost model when a trade doesn't
+    # specify one: equity_delivery / equity_intraday / futures / options.
+    paper_default_segment: str = "equity_intraday"
     # Market-order slippage (bps) modelled against the taker on paper fills.
     paper_slippage_bps: float = 1.0
+    # Reference order notional (INR) the validation framework uses to convert the
+    # (partly fixed) cost stack into a round-trip bps figure per trade.
+    validation_reference_notional: float = 100_000.0
     # Run the tick-driven paper position manager inside the feed process.
     paper_trading_enabled: bool = True
     # Generate daily/weekly performance reports automatically in the feed.

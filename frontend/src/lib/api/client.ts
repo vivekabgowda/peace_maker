@@ -18,16 +18,23 @@ export class ApiRequestError extends Error {
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   auth?: boolean;
+  /** Abort the request after this many ms (default 15s). */
+  timeoutMs?: number;
 }
+
+/** Default per-request timeout — a hung network must not hang the UI forever. */
+const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
  * Thin typed fetch wrapper around the backend API.
  *
- * Attaches the bearer token when `auth` is set, normalizes the error envelope
- * into `ApiRequestError`, and parses JSON responses.
+ * Attaches the bearer token when `auth` is set, enforces a request timeout,
+ * normalizes the error envelope into `ApiRequestError`, and parses JSON
+ * responses. Network failures and timeouts surface as `ApiRequestError` with a
+ * `status` of 0 so callers can render a friendly message instead of crashing.
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, auth = false, headers, ...rest } = options;
+  const { body, auth = false, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...rest } = options;
   const finalHeaders = new Headers(headers);
   finalHeaders.set('Content-Type', 'application/json');
 
@@ -36,13 +43,36 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     if (token) finalHeaders.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: finalHeaders,
-    // Send the httpOnly refresh cookie with auth requests (R1).
-    credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // Honour a caller-supplied abort signal alongside the timeout.
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...rest,
+      headers: finalHeaders,
+      // Send the httpOnly refresh cookie with auth requests (R1).
+      credentials: 'include',
+      signal: controller.signal,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === 'AbortError';
+    throw new ApiRequestError(
+      0,
+      aborted ? 'timeout' : 'network_error',
+      aborted
+        ? 'The request timed out. Please check your connection and try again.'
+        : 'Could not reach the server. Please check your connection.',
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (response.status === 204) return undefined as T;
 

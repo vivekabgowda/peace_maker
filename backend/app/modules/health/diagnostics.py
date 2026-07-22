@@ -162,12 +162,31 @@ def check_event_stream() -> ServiceStatus:
     )
 
 
+async def check_broker_token() -> bool:
+    """True only when a live broker is configured AND a valid daily token is stored.
+
+    Read-only: reflects connection state; the platform never places orders.
+    """
+    settings = get_settings()
+    if settings.market_provider != "zerodha" or not settings.broker_enc_key:
+        return False
+    try:
+        from app.modules.broker.token_store import Cipher, DbTokenStore
+
+        async with async_session_factory() as session:
+            stored = await DbTokenStore(session, Cipher(settings.broker_enc_key)).load("zerodha")
+        return bool(stored and stored.is_valid)
+    except Exception:  # pragma: no cover - defensive; diagnostics must never fail
+        return False
+
+
 async def gather_diagnostics() -> dict[str, object]:
     settings = get_settings()
     database = await check_database()
     redis = await check_redis()
     feed = await check_market_feed()
     stream = check_event_stream()
+    broker_connected = await check_broker_token()
     services = [database, redis, feed, stream]
 
     # Core services whose failure means the platform is degraded. The feed is
@@ -182,7 +201,8 @@ async def gather_diagnostics() -> dict[str, object]:
         "environment": settings.env,
         "timestamp": datetime.now(UTC).isoformat(),
         "market_provider": settings.market_provider,
-        "broker_connected": False,  # Sprint 8: no live broker by design.
+        # Live-broker connection is read-only market data; no order path exists.
+        "broker_connected": broker_connected,
         "services": [s.as_dict() for s in services],
         "pipeline": feed.meta,
     }

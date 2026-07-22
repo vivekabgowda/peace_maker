@@ -32,6 +32,20 @@ async def run_validation(
     return result
 
 
+@router.post("/monte-carlo", summary="Monte Carlo the net-of-cost trade sequence of a strategy")
+async def monte_carlo_run(
+    _admin: AdminUser,
+    session: DbSession,
+    strategy: Annotated[str, Query(min_length=1, max_length=64)],
+    history: Annotated[int, Query(ge=50, le=5000)] = 400,
+    simulations: Annotated[int, Query(ge=100, le=20000)] = 2000,
+    method: Annotated[str, Query(pattern="^(resample|shuffle)$")] = "resample",
+) -> dict[str, Any]:
+    return await ValidationService(session).monte_carlo(
+        strategy_key=strategy, history=history, simulations=simulations, method=method
+    )
+
+
 @router.get("/runs", summary="List recent validation runs")
 async def list_runs(
     _user: CurrentUser,

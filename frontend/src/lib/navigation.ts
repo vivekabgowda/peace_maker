@@ -20,6 +20,11 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Portfolio', href: '/portfolio', icon: 'M3 7h18v12H3zM3 7l3-3h12l3 3' },
   { label: 'Journal', href: '/journal', icon: 'M5 4h11l3 3v13H5zM8 9h8M8 13h8M8 17h5' },
   { label: 'Analytics', href: '/analytics', icon: 'M4 19h16M7 16v-5m5 5V7m5 9v-8' },
+  {
+    label: 'Validation',
+    href: '/validation',
+    icon: 'M9 12l2 2 4-4M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7z',
+  },
   { label: 'Diagnostics', href: '/diagnostics', icon: 'M3 12h4l2 5 4-14 2 9h6' },
   {
     label: 'Settings',

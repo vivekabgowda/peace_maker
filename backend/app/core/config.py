@@ -138,6 +138,9 @@ class Settings(BaseSettings):
     paper_default_segment: str = "equity_intraday"
     # Market-order slippage (bps) modelled against the taker on paper fills.
     paper_slippage_bps: float = 1.0
+    # Reference order notional (INR) the validation framework uses to convert the
+    # (partly fixed) cost stack into a round-trip bps figure per trade.
+    validation_reference_notional: float = 100_000.0
     # Run the tick-driven paper position manager inside the feed process.
     paper_trading_enabled: bool = True
     # Generate daily/weekly performance reports automatically in the feed.

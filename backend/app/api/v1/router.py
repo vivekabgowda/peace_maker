@@ -21,6 +21,7 @@ from app.modules.news.api import router as news_router
 from app.modules.paper_trading.api import router as paper_router
 from app.modules.scanner.api import router as alpha_router
 from app.modules.users.router import router as users_router
+from app.modules.validation.api import router as validation_router
 from app.websocket.gateway import router as ws_router
 
 api_router = APIRouter()
@@ -37,4 +38,5 @@ api_router.include_router(paper_router)
 api_router.include_router(journal_router)
 api_router.include_router(analytics_router)
 api_router.include_router(admin_router)
+api_router.include_router(validation_router)
 api_router.include_router(ws_router)

@@ -25,6 +25,7 @@ from app.modules.market_data import orm as _market_orm  # noqa: F401
 from app.modules.news import orm as _news_orm  # noqa: F401
 from app.modules.paper_trading import orm as _paper_orm  # noqa: F401
 from app.modules.users import models as _users_models  # noqa: F401
+from app.modules.validation import orm as _validation_orm  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

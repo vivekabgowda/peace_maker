@@ -16,6 +16,7 @@ from app.core.rate_limit import login_guard, login_rate_limit
 from app.modules.auth.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.modules.auth.schemas import (
     AccessTokenResponse,
+    ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
@@ -104,6 +105,38 @@ async def logout(request: Request, session: DbSession) -> Response:
     token = request.cookies.get(REFRESH_COOKIE)
     if token:
         await AuthService(session).logout(refresh_token=token)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(response)
+    return response
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="Change your password; revokes all refresh tokens",
+)
+async def change_password(
+    payload: ChangePasswordRequest, user: CurrentUser, session: DbSession
+) -> Response:
+    await AuthService(session).change_password(
+        user=user,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(response)
+    return response
+
+
+@router.post(
+    "/logout-all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="Revoke every session for the current user and clear the cookie",
+)
+async def logout_all(user: CurrentUser, session: DbSession) -> Response:
+    await AuthService(session).logout_all(user=user)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_refresh_cookie(response)
     return response

@@ -1,17 +1,14 @@
 import { PageHeader } from '@/components/layout/PageHeader';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { SettingsView } from '@/features/settings/SettingsView';
 
 export default function SettingsPage() {
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="Profile, risk limits, and notification preferences."
+        description="Profile, trading defaults, notifications, appearance, and security."
       />
-      <EmptyState
-        title="Settings — arriving in Sprint 2"
-        description="Sprint 1 delivers the foundation (auth, shell, navigation). This module's UI lands in Sprint 2 per the roadmap."
-      />
+      <SettingsView />
     </div>
   );
 }

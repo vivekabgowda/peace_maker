@@ -108,6 +108,24 @@ class AuthService:
         if stored is not None:
             await self._tokens.revoke(stored)
 
+    async def logout_all(self, *, user: User) -> None:
+        """Revoke every active refresh token for the user ("logout everywhere")."""
+        await self._tokens.revoke_all_for_user(user.id)
+
+    async def change_password(
+        self, *, user: User, current_password: str, new_password: str
+    ) -> None:
+        """Verify the current password, set the new one, and revoke all sessions.
+
+        Revoking every refresh token forces other devices to re-authenticate,
+        which is the expected security behaviour after a password change.
+        """
+        if not verify_password(current_password, user.password_hash):
+            raise AuthenticationError("Current password is incorrect.")
+        user.password_hash = hash_password(new_password)
+        await self._session.flush()
+        await self._tokens.revoke_all_for_user(user.id)
+
     async def _issue_pair(self, user: User) -> TokenPair:
         access, _, _ = create_access_token(str(user.id), extra_claims={"role": user.role})
         refresh, jti, expires_at = create_refresh_token(str(user.id))

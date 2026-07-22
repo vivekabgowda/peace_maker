@@ -5,6 +5,12 @@
 :root {
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+
+  /* Accent colour as an rgb triplet so Tailwind opacity modifiers work.
+     Default = #1f6feb (accent) / #388bfd (hover). Overridden at runtime by the
+     user's saved Appearance preference (see lib/theme/accent.ts). */
+  --accent-rgb: 31 111 235;
+  --accent-hover-rgb: 56 139 253;
 }
 
 @layer base {

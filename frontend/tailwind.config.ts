@@ -22,9 +22,12 @@ const config: Config = {
           muted: '#8b98a9',
           faint: '#5b6472',
         },
+        // Accent is a runtime CSS variable so the user can pick their accent
+        // colour from Settings (Appearance). The rgb-triplet form keeps
+        // Tailwind's `/<alpha-value>` opacity modifiers working (e.g. bg-accent/10).
         accent: {
-          DEFAULT: '#1f6feb',
-          hover: '#388bfd',
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          hover: 'rgb(var(--accent-hover-rgb) / <alpha-value>)',
         },
         gain: '#26a269',
         loss: '#e5484d',

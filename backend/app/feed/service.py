@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.core.config import get_settings
 from app.core.database import async_session_factory
@@ -28,6 +29,9 @@ from app.modules.market_data.repository import MarketDataRepository
 from app.modules.paper_trading.runner import PaperTradingRunner
 from app.shared.events import CandleClosed, QuoteUpdated, event_bus
 from app.shared.market_calendar import SessionPhase, is_market_open, session_phase
+
+if TYPE_CHECKING:
+    from app.modules.broker.token_store import BrokerSession
 from app.shared.supervision import Backoff, Supervisor
 
 logger = get_logger("feed_service")
@@ -47,6 +51,7 @@ class FeedService:
     ) -> None:
         self._settings = get_settings()
         self._provider = provider or create_provider(self._settings.market_provider)
+        self._provider_injected = provider is not None
         self._enforce_session = enforce_session
         self._symbol_ids: dict[str, int] = {}
         self._last_volume: dict[str, int] = {}
@@ -59,7 +64,7 @@ class FeedService:
 
     # -- Lifecycle ----------------------------------------------------------
     async def start(self) -> None:
-        await self._attach_broker_token()
+        await self._ensure_provider()
         await self._provider.connect()
         metrics.PROVIDER_CONNECTED.set(1)
         async with async_session_factory() as session:
@@ -114,29 +119,43 @@ class FeedService:
         self._started = True
         logger.info("feed_started", provider=self._provider.name, symbols=len(self._symbol_ids))
 
-    async def _attach_broker_token(self) -> None:
-        """For a live broker provider, load the encrypted daily token and attach it
-        before connecting. If none is stored, the provider's connect() will raise a
-        clear instruction to complete the login flow."""
+    async def _ensure_provider(self) -> None:
+        """For a live broker provider, attach the encrypted daily token before
+        connecting. If no valid token is available, **fall back to the simulated
+        provider** rather than crashing the feed — the platform stays fully
+        operational (advisory-only) and the operator is prompted to reconnect via
+        the Admin broker panel. An explicitly-injected provider is never swapped.
+        """
         if self._settings.market_provider != "zerodha":
             return
         set_token = getattr(self._provider, "set_access_token", None)
-        if not callable(set_token):
+        token = await self._load_broker_token() if callable(set_token) else None
+        if token is not None and callable(set_token):
+            set_token(token.access_token)
+            logger.info("zerodha_token_attached", kite_user=token.kite_user_id)
             return
-        from app.modules.broker.token_store import Cipher, DbTokenStore
+        if self._provider_injected:
+            return  # a test/caller injected the provider on purpose; leave it.
+        logger.warning(
+            "zerodha_token_missing_falling_back_to_simulated",
+            reason="no valid daily token — complete the login flow in Admin → Broker",
+        )
+        self._provider = create_provider("simulated")
 
+    async def _load_broker_token(self) -> BrokerSession | None:
+        """Load a valid stored Zerodha session, or None."""
         key = self._settings.broker_enc_key
         if not key:
             logger.warning("broker_enc_key_unset_cannot_attach_token")
-            return
+            return None
+        from app.modules.broker.token_store import Cipher, DbTokenStore
+
         async with async_session_factory() as session:
             store = DbTokenStore(session, Cipher(key))
             broker_session = await store.load("zerodha")
         if broker_session and broker_session.is_valid:
-            set_token(broker_session.access_token)
-            logger.info("zerodha_token_attached", kite_user=broker_session.kite_user_id)
-        else:
-            logger.warning("zerodha_token_missing_or_expired_complete_login_flow")
+            return broker_session
+        return None
 
     async def stop(self) -> None:
         await self._supervisor.stop_all()

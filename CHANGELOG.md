@@ -4,6 +4,35 @@ All notable changes to BKN AI Capital are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The platform is
 **advisory-only** — no release places live broker orders.
 
+## [Unreleased] — Live-data hardening & Validation dashboard (Sprint 14, part 2)
+
+### Added
+- **Monte Carlo** simulator over a strategy's net-of-cost trade returns
+  (resample/shuffle) → return & drawdown distributions and P(loss);
+  `POST /validation/monte-carlo` (admin).
+- **Validation dashboard** (`/validation`) — visualizes validation runs
+  (per-strategy net expectancy, cost drag, deflated Sharpe, q-value, survivors),
+  out-of-sample walk-forward folds, confidence intervals, and Monte Carlo. New
+  nav item; run/simulate actions gated to admins (viewing is available to any
+  authenticated user).
+- **Live-data status & indicator-verification runbook**
+  (`docs/ZERODHA_LIVE_DATA_STATUS.md`).
+
+### Changed
+- **Feed graceful degradation:** when `market_provider=zerodha` but no valid
+  daily token is stored, the feed falls back to the simulated provider instead
+  of crashing on connect (advisory-only; operator is prompted to reconnect). An
+  explicitly-injected provider is never swapped.
+- `/health/diagnostics` `broker_connected` now reflects real stored-token
+  validity (read-only) rather than a hardcoded `false`.
+
+### Notes
+- The Zerodha live-data pipeline (OAuth, encrypted token store, ticker +
+  reconnect, instrument sync, candle generation, TimescaleDB storage, feed into
+  Scanner/Analytics/Dashboard) was already implemented in Sprints 6 & 8; this
+  change hardens it and adds the validation visualization. No order path is
+  added — the live broker remains read-only market data.
+
 ## [Unreleased] — Quant validation framework (Sprint 14, part 1)
 
 Implements the CIO due-diligence report's top priority: replace frictionless

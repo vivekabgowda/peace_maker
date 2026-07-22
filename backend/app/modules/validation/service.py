@@ -19,9 +19,10 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.modules.backtesting.service import BacktestService
 from app.modules.paper_trading.costs import IndianCostModel, Segment, SlippageModel
+from app.modules.validation.monte_carlo import monte_carlo
 from app.modules.validation.multiple_testing import benjamini_hochberg
 from app.modules.validation.orm import ValidationRun
-from app.modules.validation.walk_forward import roundtrip_cost_bps, walk_forward
+from app.modules.validation.walk_forward import net_r_series, roundtrip_cost_bps, walk_forward
 
 logger = get_logger("validation_service")
 
@@ -113,6 +114,36 @@ class ValidationService:
             roundtrip_bps=round(roundtrip_bps, 2),
         )
         return {"id": run.id, "created_at": run.created_at.isoformat(), **results_doc}
+
+    async def monte_carlo(
+        self,
+        *,
+        strategy_key: str,
+        history: int = 400,
+        simulations: int = 2000,
+        method: str = "resample",
+    ) -> dict[str, Any]:
+        """Monte Carlo the net-of-cost trade sequence of one strategy."""
+        settings = self._settings
+        seg = _segment(settings.paper_default_segment)
+        roundtrip_bps = roundtrip_cost_bps(
+            cost_model=IndianCostModel(),
+            slippage=SlippageModel(base_spread_bps=settings.paper_slippage_bps * 2),
+            notional=settings.validation_reference_notional,
+            segment=seg,
+        )
+        results = await BacktestService(self._session).run_results(
+            strategy_key=strategy_key, history=history
+        )
+        trades = results[0].trades if results else []
+        net = net_r_series(trades, roundtrip_bps=roundtrip_bps)
+        sim = monte_carlo(net, simulations=simulations, method=method)
+        return {
+            "strategy": strategy_key,
+            "roundtrip_cost_bps": round(roundtrip_bps, 4),
+            "units": "R (per-trade risk multiples), net of costs",
+            **sim.as_dict(),
+        }
 
     async def list_runs(self, *, limit: int = 20) -> list[dict[str, Any]]:
         stmt = select(ValidationRun).order_by(ValidationRun.created_at.desc()).limit(limit)

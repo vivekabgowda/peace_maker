@@ -18,6 +18,7 @@ The full V1 advisory stack is implemented, tested, and hardened. The backend
 in the UI** — with Docker/Compose, CI/CD, and a strict quality gate.
 
 - **Run it locally:** [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) → `make up` (see [Quick start](#quick-start))
+- **What changed, sprint by sprint:** [CHANGELOG.md](CHANGELOG.md)
 - **What's done / what's left for prod:** [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
 - **Coding standards:** [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
 

@@ -1,11 +1,12 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
-import { refresh } from '@/lib/auth/api';
+import { fetchMe, refresh } from '@/lib/auth/api';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
@@ -17,7 +18,7 @@ import { useAuthStore } from '@/stores/authStore';
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, bootstrapped, setSession, setBootstrapped } = useAuthStore();
+  const { isAuthenticated, bootstrapped, setSession, setBootstrapped, setUser } = useAuthStore();
 
   useEffect(() => {
     if (bootstrapped) return;
@@ -34,6 +35,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [bootstrapped, setSession, setBootstrapped]);
+
+  // Load the current user once authenticated so the role is available app-wide
+  // (nav gating, admin guard). Shares the ['me'] cache with the pages that use it.
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+    enabled: isAuthenticated,
+  });
+  useEffect(() => {
+    if (me) setUser(me);
+  }, [me, setUser]);
 
   useEffect(() => {
     if (bootstrapped && !isAuthenticated) router.replace('/login');

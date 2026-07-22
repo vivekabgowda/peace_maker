@@ -9,8 +9,9 @@ from __future__ import annotations
 import enum
 import uuid
 from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import ForeignKey, Numeric, String, Uuid
+from sqlalchemy import JSON, ForeignKey, Numeric, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -65,5 +66,7 @@ class UserProfile(Base, TimestampMixin):
     )
     experience_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata", nullable=False)
+    # Trading / notification / appearance preferences (validated by the API layer).
+    preferences: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
     user: Mapped[User] = relationship(back_populates="profile")

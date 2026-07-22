@@ -18,11 +18,13 @@ async def read_me(user: CurrentUser) -> UserRead:
 
 @router.patch("/me/profile", response_model=UserRead, summary="Update your profile")
 async def update_profile(payload: ProfileUpdate, user: CurrentUser, session: DbSession) -> UserRead:
+    preferences = payload.preferences.model_dump(mode="json") if payload.preferences else None
     updated = await UserRepository(session).update_profile(
         user,
         display_name=payload.display_name,
         trading_capital=payload.trading_capital,
         experience_level=payload.experience_level,
         timezone=payload.timezone,
+        preferences=preferences,
     )
     return UserRead.model_validate(updated)

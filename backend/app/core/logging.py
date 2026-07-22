@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections import deque
 from collections.abc import MutableMapping
 from contextvars import ContextVar
 from typing import Any, cast
@@ -17,6 +18,12 @@ import structlog
 
 # Correlation id for the current request; threaded into every log line.
 correlation_id_ctx: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+
+# Bounded in-memory ring buffer of the most recent structured log records. This
+# powers the Admin dashboard's live log/error/warning view without needing an
+# external log store — it is the real application log stream, capped in size.
+_LOG_RING: deque[dict[str, Any]] = deque(maxlen=500)
+_LEVEL_ORDER = {"debug": 10, "info": 20, "warning": 30, "error": 40, "critical": 50}
 
 
 def _add_correlation_id(
@@ -28,6 +35,41 @@ def _add_correlation_id(
     return event_dict
 
 
+def _capture_log(
+    logger: Any, _method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    """Append a compact copy of each record to the ring buffer (non-destructive)."""
+    logger_name = event_dict.get("logger")
+    if logger_name is None and logger is not None:
+        logger_name = getattr(logger, "name", None)
+    _LOG_RING.append(
+        {
+            "timestamp": event_dict.get("timestamp"),
+            "level": str(event_dict.get("level", "info")).lower(),
+            "event": str(event_dict.get("event", "")),
+            "logger": logger_name,
+            "correlation_id": event_dict.get("correlation_id"),
+        }
+    )
+    return event_dict
+
+
+def recent_logs(*, min_level: str = "info", limit: int = 100) -> list[dict[str, Any]]:
+    """Most-recent-first log records at or above ``min_level``."""
+    threshold = _LEVEL_ORDER.get(min_level.lower(), 20)
+    out = [
+        record
+        for record in reversed(_LOG_RING)
+        if _LEVEL_ORDER.get(str(record.get("level", "info")), 20) >= threshold
+    ]
+    return out[:limit]
+
+
+def clear_log_ring() -> None:
+    """Empty the ring buffer (used by tests)."""
+    _LOG_RING.clear()
+
+
 def configure_logging(*, level: str = "INFO", json_logs: bool = True) -> None:
     """Configure the standard library and structlog once, at startup."""
     log_level = getattr(logging, level.upper(), logging.INFO)
@@ -37,6 +79,7 @@ def configure_logging(*, level: str = "INFO", json_logs: bool = True) -> None:
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         _add_correlation_id,
+        _capture_log,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ]

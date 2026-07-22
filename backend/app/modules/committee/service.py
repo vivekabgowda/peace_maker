@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.modules.admin.repository import AdminRepository
 from app.modules.committee.base import CommitteeBrief, PortfolioState
-from app.modules.committee.committee import InvestmentCommittee
+from app.modules.committee.config import build_committee_from_config
 from app.modules.market_data.repository import MarketDataRepository
 from app.modules.scanner.context import ContextBuilder
 from app.modules.scanner.engine import AlphaScanner
@@ -25,10 +26,10 @@ logger = get_logger("committee_service")
 
 class CommitteeService:
     def __init__(self, session: AsyncSession) -> None:
+        self._session = session
         self._repo = MarketDataRepository(session)
         self._settings = get_settings()
         self._scanner = AlphaScanner()
-        self._committee = InvestmentCommittee()
 
     async def deliberate(
         self,
@@ -79,7 +80,11 @@ class CommitteeService:
             book=book,
             portfolio=portfolio or PortfolioState(),
         )
-        deliberation = self._committee.deliberate(brief)
+        # Apply the operator's committee configuration (agent enable/weight and
+        # CIO thresholds) from the Admin dashboard; absent config ⇒ defaults.
+        config = await AdminRepository(self._session).get_committee_config()
+        committee = build_committee_from_config(config)
+        deliberation = committee.deliberate(brief)
         return {"convened": True, **deliberation.as_dict()}
 
 

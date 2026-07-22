@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.core.database import Base, engine
 
 # Import model modules so their tables register on Base.metadata.
+from app.modules.admin import orm as _admin_orm  # noqa: F401
 from app.modules.analytics import orm as _analytics_orm  # noqa: F401
 from app.modules.auth import models as _auth_models  # noqa: F401
 from app.modules.broker import orm as _broker_orm  # noqa: F401

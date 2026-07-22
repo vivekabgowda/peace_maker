@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.modules.admin.router import router as admin_router
 from app.modules.analytics.api import router as analytics_router
 from app.modules.auth.router import router as auth_router
 from app.modules.backtesting.api import router as backtest_router
@@ -35,4 +36,5 @@ api_router.include_router(broker_router)
 api_router.include_router(paper_router)
 api_router.include_router(journal_router)
 api_router.include_router(analytics_router)
+api_router.include_router(admin_router)
 api_router.include_router(ws_router)

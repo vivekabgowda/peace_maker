@@ -34,6 +34,9 @@ _ROLE_WEIGHTS: dict[AgentRole, float] = {
     AgentRole.PORTFOLIO_MANAGER: 1.1,
 }
 
+# Public alias so the Admin dashboard can seed its editable defaults.
+DEFAULT_ROLE_WEIGHTS = _ROLE_WEIGHTS
+
 
 class Recommendation(StrEnum):
     STRONG_BUY = "strong_buy"
@@ -103,11 +106,27 @@ class CommitteeDecision:
 
 
 class ChiefInvestmentOfficer:
-    """Aggregates agent reports into the final decision (deterministic)."""
+    """Aggregates agent reports into the final decision (deterministic).
 
-    # Conviction thresholds for the recommendation ladder.
+    Role weights and the conviction thresholds are configurable (the Admin
+    dashboard persists overrides). Omitting them reproduces the canonical
+    defaults, so existing callers and tests are unaffected.
+    """
+
+    # Conviction thresholds for the recommendation ladder (defaults).
     STRONG = 0.6
     ACT = 0.35
+
+    def __init__(
+        self,
+        *,
+        role_weights: dict[AgentRole, float] | None = None,
+        strong: float | None = None,
+        act: float | None = None,
+    ) -> None:
+        self._role_weights = role_weights if role_weights is not None else dict(_ROLE_WEIGHTS)
+        self.strong = self.STRONG if strong is None else strong
+        self.act = self.ACT if act is None else act
 
     def decide(self, brief: CommitteeBrief, reports: list[AgentReport]) -> CommitteeDecision:
         by_role = {r.role: r for r in reports}
@@ -119,7 +138,7 @@ class ChiefInvestmentOfficer:
         weighted = 0.0
         breakdown: dict[str, float] = {}
         for report in reports:
-            w = _ROLE_WEIGHTS.get(report.role, 1.0)
+            w = self._role_weights.get(report.role, 1.0)
             contribution = report.stance.score * report.confidence * w
             breakdown[report.role.value] = contribution
             weighted += contribution
@@ -131,15 +150,15 @@ class ChiefInvestmentOfficer:
         vetoed = bool(vetoes)
 
         # Recommendation ladder.
-        if vetoed or consensus <= -self.ACT:
+        if vetoed or consensus <= -self.act:
             rec = Recommendation.REJECT
-        elif consensus >= self.STRONG:
+        elif consensus >= self.strong:
             rec = (
                 Recommendation.STRONG_BUY
                 if direction is Direction.LONG
                 else Recommendation.STRONG_SELL
             )
-        elif consensus >= self.ACT:
+        elif consensus >= self.act:
             rec = Recommendation.BUY if direction is Direction.LONG else Recommendation.SELL
         else:
             rec = Recommendation.HOLD

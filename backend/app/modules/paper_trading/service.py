@@ -21,6 +21,7 @@ from app.core.logging import get_logger
 from app.modules.journal.models import ClosedTrade
 from app.modules.journal.service import JournalService
 from app.modules.paper_trading import metrics
+from app.modules.paper_trading.costs import IndianCostModel, Segment
 from app.modules.paper_trading.engine import (
     ExecutionModel,
     FeeModel,
@@ -41,21 +42,35 @@ from app.modules.paper_trading.repository import PaperTradingRepository
 logger = get_logger("paper_trading.service")
 
 
+def _segment_from_settings(value: str) -> Segment:
+    try:
+        return Segment(value)
+    except ValueError:
+        return Segment.EQUITY_INTRADAY
+
+
 class PaperTradingService:
     def __init__(
         self,
         db: AsyncSession,
         *,
         settings: Settings | None = None,
-        fee_model: FeeModel | None = None,
+        fee_model: FeeModel | IndianCostModel | None = None,
         execution: ExecutionModel | None = None,
     ) -> None:
         self._db = db
         self._settings = settings or get_settings()
         self._repo = PaperTradingRepository(db)
         self._journal = JournalService(db)
-        self._fees = fee_model or FeeModel(self._settings.paper_fee_bps)
+        self._fees = fee_model or self._build_cost_model()
+        self._segment = _segment_from_settings(self._settings.paper_default_segment)
         self._exec = execution or ExecutionModel(self._settings.paper_slippage_bps)
+
+    def _build_cost_model(self) -> FeeModel | IndianCostModel:
+        """Realistic Indian charges when configured, else the flat blended model."""
+        if self._settings.paper_cost_model == "realistic":
+            return IndianCostModel()
+        return FeeModel(self._settings.paper_fee_bps)
 
     # -- Account ------------------------------------------------------------
     async def get_or_create_account(self, user_id: str | None) -> PaperAccount:
@@ -110,7 +125,9 @@ class PaperTradingService:
 
         fill = decision.fill
         assert fill is not None
-        entry_fee = self._fees.cost(fill.notional)
+        entry_fee = self._fees.charge(
+            notional=fill.notional, side=request.side, segment=self._segment
+        )
 
         # Reserve capital: notional + entry fee.
         cost = fill.notional + entry_fee
@@ -205,7 +222,9 @@ class PaperTradingService:
         reason: ExitReason,
     ) -> dict[str, object]:
         exit_notional = exit_price * position.quantity
-        exit_fee = self._fees.cost(exit_notional)
+        exit_fee = self._fees.charge(
+            notional=exit_notional, side=position.side.opposite, segment=self._segment
+        )
         total_fees = position.fees + exit_fee  # entry fee already booked at open
 
         # Finalize the domain position so P&L properties are correct.

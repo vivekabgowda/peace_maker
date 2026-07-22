@@ -40,6 +40,10 @@ class FeeModel:
     def cost(self, notional: float) -> float:
         return abs(notional) * self.bps / 10_000.0
 
+    def charge(self, *, notional: float, side: object = None, segment: object = None) -> float:
+        """`CostModel`-protocol method; the flat model ignores side/segment."""
+        return self.cost(notional)
+
 
 @dataclass(frozen=True, slots=True)
 class ExecutionModel:

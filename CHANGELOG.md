@@ -4,6 +4,48 @@ All notable changes to BKN AI Capital are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The platform is
 **advisory-only** — no release places live broker orders.
 
+## [Unreleased] — Quant validation framework (Sprint 14, part 1)
+
+Implements the CIO due-diligence report's top priority: replace frictionless
+assumptions with realistic costs and add the statistics to decide whether a
+strategy has a genuine, cost-surviving edge. **No live trading; measures only.**
+
+### Added
+
+- **Realistic Indian trading costs** (`paper_trading/costs.py`) — `IndianCostModel`
+  computes segment-specific statutory charges (brokerage, STT, exchange txn, GST,
+  SEBI turnover fee, stamp duty) with buy/sell asymmetry; `SlippageModel` adds
+  volatility- and size-aware slippage. Wired into the paper engine via a
+  `CostModel` seam and selectable with `paper_cost_model` (default `flat` keeps
+  existing behaviour; `realistic` is the honest stack).
+- **Statistical validation core** (`validation/`) — Probabilistic and Deflated
+  Sharpe (Bailey & López de Prado), percentile bootstrap confidence intervals
+  with a significance flag, Bonferroni and Benjamini–Hochberg multiple-testing
+  corrections, time-ordered OOS / walk-forward partitioning, and
+  parameter-stability analysis. Pure Python (no numpy dependency).
+- **Cost-aware walk-forward evaluation** — converts costs into an R haircut per
+  trade, splits history into temporal folds, and reports gross vs net
+  expectancy, cost drag, net profit factor, bootstrap CI, deflated Sharpe, OOS
+  consistency, and a significance verdict.
+- **Validation service + API** — `POST /validation/run` (admin) backtests the
+  library, applies costs, evaluates each strategy OOS, corrects for multiple
+  testing across the library, reports survivors, and persists a run;
+  `GET /validation/runs`, `GET /validation/runs/{id}` (authed). New
+  `validation_runs` table (migration `0008`).
+
+### Changed
+
+- `BacktestService` exposes `run_results()` (raw results) so the validation
+  layer can post-process trades; `run()` behaviour is unchanged.
+
+### Notes
+
+- Additive and backward-compatible: default cost behaviour and existing tests
+  are unchanged; the realistic model is opt-in. Advisory-only preserved — no
+  order path is added.
+- The real Scanner, Journal, and Analytics pages already shipped in PR #7; this
+  sprint builds the validation backend on top of the existing engine.
+
 ## [Unreleased] — Application layer & production hardening (Sprints 9–13)
 
 Completes the V1 advisory application: every module page is wired to real

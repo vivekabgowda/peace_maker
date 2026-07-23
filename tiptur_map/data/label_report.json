@@ -1,0 +1,79 @@
+{
+  "center_utm": [
+    659666.1423496235,
+    1466201.8759243595
+  ],
+  "districts": [
+    "Chikkamagaluru",
+    "Chitradurga",
+    "Hassan",
+    "Mandya",
+    "Tumakuru"
+  ],
+  "taluks": [
+    "Ajjampura taluku",
+    "Aluru taluk",
+    "Arasikere taluku",
+    "Beluru taluk",
+    "Channarayapattana taluk",
+    "Chikkanayakanahalli taluk",
+    "Gubbi taluk",
+    "Hasana taluk",
+    "Hole Narasipura taluk",
+    "Hosadurga taluku",
+    "Kaduru taluk",
+    "Krishnarajapete taluk",
+    "Kunigal taluk",
+    "Nagamangala taluk",
+    "Sira taluk",
+    "Tipaturu taluk",
+    "Turuvekere taluk"
+  ],
+  "roads_by_class": {
+    "village_road": 3206,
+    "connecting_road": 1147,
+    "rural_road": 468,
+    "national_highway": 438,
+    "district_road": 302,
+    "state_highway": 133
+  },
+  "places_by_type": {
+    "village": 893,
+    "hamlet": 88,
+    "suburb": 6,
+    "town": 5
+  },
+  "hoblis_matched": [
+    "Mayasandra",
+    "Honakere",
+    "Turuvekere",
+    "Dandinashivara",
+    "Kibbanahalli",
+    "Dabbeghatta",
+    "Chikkanayakanahalli",
+    "Gandasi",
+    "Nonavinakere",
+    "Tiptur",
+    "Arasikere",
+    "Honnavalli",
+    "Shettikere",
+    "Banavara",
+    "Handanakere",
+    "Kanakatte",
+    "Kandikere",
+    "Panchanahalli",
+    "Huliyar"
+  ],
+  "hoblis_unmatched_dropped": [
+    "Gubbi (Gubbi taluk)",
+    "Chelur (Gubbi taluk)",
+    "C.S.Pura (Gubbi taluk)",
+    "Dandinakuruke (Turuvekere taluk)",
+    "Kadur (Kaduru taluk)",
+    "Sakharayapatna (Kaduru taluk)",
+    "Sira (Sira taluk)",
+    "Kallambella (Sira taluk)",
+    "Gowdagere (Sira taluk)",
+    "Nagamangala (Nagamangala taluk)"
+  ]
+}

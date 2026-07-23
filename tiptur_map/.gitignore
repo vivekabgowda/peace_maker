@@ -1,0 +1,11 @@
+# regenerable intermediates (rebuild with the pipeline)
+data/osm_cache/
+data/tiptur_raw.gpkg
+data/tiptur_processed.gpkg
+data/karnataka_state.gpkg
+scripts/*.log
+scripts/err.log
+scripts/__pycache__/
+
+# fast proof renders (final A0/A1 are committed)
+output/Tiptur_40km_DRAFT.*

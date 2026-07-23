@@ -1,0 +1,26 @@
+{
+"type": "FeatureCollection",
+"name": "hobli_headquarters",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "hobli": "Mayasandra", "taluk": "Turuvekere taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.7557088, 13.0792918 ] } },
+{ "type": "Feature", "properties": { "hobli": "Honakere", "taluk": "Nagamangala taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.7515683, 13.1263742 ] } },
+{ "type": "Feature", "properties": { "hobli": "Turuvekere", "taluk": "Turuvekere taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.6680675, 13.1627196 ] } },
+{ "type": "Feature", "properties": { "hobli": "Dandinashivara", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.7097613, 13.2531027 ] } },
+{ "type": "Feature", "properties": { "hobli": "Kibbanahalli", "taluk": "Tipaturu taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.6433729, 13.3082482 ] } },
+{ "type": "Feature", "properties": { "hobli": "Dabbeghatta", "taluk": "Turuvekere taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.6216429, 13.3948595 ] } },
+{ "type": "Feature", "properties": { "hobli": "Chikkanayakanahalli", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.6202776, 13.4190772 ] } },
+{ "type": "Feature", "properties": { "hobli": "Gandasi", "taluk": "Arasikere taluku" }, "geometry": { "type": "Point", "coordinates": [ 76.3063432, 13.1588838 ] } },
+{ "type": "Feature", "properties": { "hobli": "Nonavinakere", "taluk": "Tipaturu taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.5541504, 13.1634549 ] } },
+{ "type": "Feature", "properties": { "hobli": "Tiptur", "taluk": "Tipaturu taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.4737675, 13.258575 ] } },
+{ "type": "Feature", "properties": { "hobli": "Arasikere", "taluk": "Arasikere taluku" }, "geometry": { "type": "Point", "coordinates": [ 76.256849, 13.3159809 ] } },
+{ "type": "Feature", "properties": { "hobli": "Honnavalli", "taluk": "Tipaturu taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.3865427, 13.3332501 ] } },
+{ "type": "Feature", "properties": { "hobli": "Shettikere", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.5613436, 13.3809692 ] } },
+{ "type": "Feature", "properties": { "hobli": "Banavara", "taluk": "Arasikere taluku" }, "geometry": { "type": "Point", "coordinates": [ 76.1615079, 13.409679 ] } },
+{ "type": "Feature", "properties": { "hobli": "Handanakere", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.4488387, 13.5031638 ] } },
+{ "type": "Feature", "properties": { "hobli": "Kanakatte", "taluk": "Arasikere taluku" }, "geometry": { "type": "Point", "coordinates": [ 76.318222, 13.5150883 ] } },
+{ "type": "Feature", "properties": { "hobli": "Kandikere", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.6189375, 13.5275772 ] } },
+{ "type": "Feature", "properties": { "hobli": "Panchanahalli", "taluk": "Kaduru taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.3330213, 13.5519924 ] } },
+{ "type": "Feature", "properties": { "hobli": "Huliyar", "taluk": "Chikkanayakanahalli taluk" }, "geometry": { "type": "Point", "coordinates": [ 76.5416593, 13.5849337 ] } }
+]
+}

@@ -1,0 +1,262 @@
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.34" projectname="Tiptur 40 km Administrative &amp; Road Map">
+  <projectCrs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></projectCrs>
+  <layer-tree-group>
+    <layer-tree-layer id="hobli_headquarters_lyr" name="hobli_headquarters" source="./tiptur_gis.gpkg|layername=hobli_headquarters" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="places_lyr" name="places" source="./tiptur_gis.gpkg|layername=places" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="districts_lyr" name="districts" source="./tiptur_gis.gpkg|layername=districts" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="roads_classified_lyr" name="roads_classified" source="./tiptur_gis.gpkg|layername=roads_classified" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="circle_40km_lyr" name="circle_40km" source="./tiptur_gis.gpkg|layername=circle_40km" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="taluks_lyr" name="taluks" source="./tiptur_gis.gpkg|layername=taluks" providerKey="ogr" checked="Qt::Checked"/><layer-tree-layer id="frame_lyr" name="frame" source="./tiptur_gis.gpkg|layername=frame" providerKey="ogr" checked="Qt::Checked"/>
+  </layer-tree-group>
+  <layerorder><item>hobli_headquarters_lyr</item><item>places_lyr</item><item>districts_lyr</item><item>roads_classified_lyr</item><item>circle_40km_lyr</item><item>taluks_lyr</item><item>frame_lyr</item></layerorder>
+  <projectlayers>
+    <maplayer type="vector" geometry="Polygon">
+    <id>frame_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=frame</datasource>
+    <layername>frame</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol">
+    <symbols><symbol name="0" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#222222" name="line_color" type="QString"/>
+        <Option value="0.4" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol></symbols>
+  </renderer-v2>
+  </maplayer><maplayer type="vector" geometry="Polygon">
+    <id>taluks_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=taluks</datasource>
+    <layername>taluks</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol"><symbols>
+   <symbol name="0" type="fill" alpha="1">
+    <layer class="SimpleFill" enabled="1">
+     <Option type="Map">
+      <Option value="#f2efe9" name="color" type="QString"/>
+      <Option value="#4d4d4d" name="outline_color" type="QString"/>
+      <Option value="0.3" name="outline_width" type="QString"/>
+      <Option value="MM" name="outline_width_unit" type="QString"/>
+      <Option value="4;2" name="customdash" type="QString"/><Option value="1" name="use_custom_dash" type="QString"/>
+     </Option>
+    </layer></symbol></symbols></renderer-v2>
+  </maplayer><maplayer type="vector" geometry="Polygon">
+    <id>circle_40km_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=circle_40km</datasource>
+    <layername>circle_40km</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol">
+    <symbols><symbol name="0" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#3b6ea5" name="line_color" type="QString"/>
+        <Option value="0.5" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        <Option value="7;4" name="customdash" type="QString"/><Option value="1" name="use_custom_dash" type="QString"/>
+      </Option>
+    </layer></symbol></symbols>
+  </renderer-v2>
+  </maplayer><maplayer type="vector" geometry="Line">
+    <id>roads_classified_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=roads_classified</datasource>
+    <layername>roads_classified</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="categorizedSymbol" attr="cls">
+    <categories><category render="true" value="national_highway" symbol="0" label="National Highway"/><category render="true" value="state_highway" symbol="1" label="State Highway"/><category render="true" value="district_road" symbol="2" label="Major District Road"/><category render="true" value="connecting_road" symbol="3" label="Other District / connecting"/><category render="true" value="rural_road" symbol="4" label="Rural road"/><category render="true" value="village_road" symbol="5" label="Village road"/></categories>
+    <symbols><symbol name="0" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#9e2b25" name="line_color" type="QString"/>
+        <Option value="0.9" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol><symbol name="1" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#e08a1e" name="line_color" type="QString"/>
+        <Option value="0.7" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol><symbol name="2" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#8f8f8f" name="line_color" type="QString"/>
+        <Option value="0.5" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol><symbol name="3" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#b4b4b4" name="line_color" type="QString"/>
+        <Option value="0.35" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol><symbol name="4" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#cfcfcf" name="line_color" type="QString"/>
+        <Option value="0.25" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol><symbol name="5" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#e2e2e2" name="line_color" type="QString"/>
+        <Option value="0.2" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol></symbols>
+  </renderer-v2>
+
+  </maplayer><maplayer type="vector" geometry="Polygon">
+    <id>districts_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=districts</datasource>
+    <layername>districts</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol">
+    <symbols><symbol name="0" type="line" alpha="1"><layer class="SimpleLine" pass="0" enabled="1">
+      <Option type="Map">
+        <Option value="#2b2b2b" name="line_color" type="QString"/>
+        <Option value="0.6" name="line_width" type="QString"/>
+        <Option value="MM" name="line_width_unit" type="QString"/>
+        <Option value="round" name="capstyle" type="QString"/>
+        <Option value="round" name="joinstyle" type="QString"/>
+        
+      </Option>
+    </layer></symbol></symbols>
+  </renderer-v2>
+  </maplayer><maplayer type="vector" geometry="Point">
+    <id>places_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=places</datasource>
+    <layername>places</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol"><symbols>
+   <symbol name="0" type="marker" alpha="1">
+    <layer class="SimpleMarker" enabled="1">
+     <Option type="Map">
+      <Option value="#5a5a5a" name="color" type="QString"/>
+      <Option value="circle" name="name" type="QString"/>
+      <Option value="1.4" name="size" type="QString"/>
+      <Option value="white" name="outline_color" type="QString"/>
+      <Option value="0.2" name="outline_width" type="QString"/>
+     </Option>
+    </layer></symbol></symbols></renderer-v2>
+  <labeling type="simple">
+   <settings>
+    <text-style fieldName="label" fontSize="7"
+       fontFamily="Sans" fontBold="0" textColor="#2b2b2b">
+     <text-buffer bufferDraw="1" bufferSize="0.8" bufferColor="255,255,255,255"/>
+    </text-style>
+    <placement placement="1" dist="1"/>
+   </settings>
+  </labeling>
+  </maplayer><maplayer type="vector" geometry="Point">
+    <id>hobli_headquarters_lyr</id>
+    <datasource>./tiptur_gis.gpkg|layername=hobli_headquarters</datasource>
+    <layername>hobli_headquarters</layername>
+    <provider>ogr</provider>
+    <srs><spatialrefsys>
+  <wkt>PROJCRS["WGS 84 / UTM zone 43N"]</wkt>
+  <proj4>+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs</proj4>
+  <srid>32643</srid><authid>EPSG:32643</authid>
+  <description>WGS 84 / UTM zone 43N</description>
+  <projectionacronym>utm</projectionacronym>
+  <ellipsoidacronym>EPSG:7030</ellipsoidacronym><geographicflag>false</geographicflag>
+</spatialrefsys></srs>
+    
+  <renderer-v2 type="singleSymbol"><symbols>
+   <symbol name="0" type="marker" alpha="1">
+    <layer class="SimpleMarker" enabled="1">
+     <Option type="Map">
+      <Option value="#1f3f73" name="color" type="QString"/>
+      <Option value="circle" name="name" type="QString"/>
+      <Option value="2.6" name="size" type="QString"/>
+      <Option value="white" name="outline_color" type="QString"/>
+      <Option value="0.2" name="outline_width" type="QString"/>
+     </Option>
+    </layer></symbol></symbols></renderer-v2>
+  <labeling type="simple">
+   <settings>
+    <text-style fieldName="hobli" fontSize="10"
+       fontFamily="Sans" fontBold="1" textColor="#1f3f73">
+     <text-buffer bufferDraw="1" bufferSize="0.8" bufferColor="255,255,255,255"/>
+    </text-style>
+    <placement placement="1" dist="1"/>
+   </settings>
+  </labeling>
+  </maplayer>
+  </projectlayers>
+</qgis>

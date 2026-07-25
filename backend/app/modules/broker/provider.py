@@ -39,6 +39,11 @@ from app.modules.market_data.providers.base import MarketProvider, ProviderError
 
 logger = get_logger("provider.zerodha")
 
+
+def _noop(*_args: object, **_kwargs: object) -> None:
+    """Detached ticker callback — swallows events from a disposed socket."""
+
+
 # Builds a fresh ticker given (api_key, access_token) — the token is known only
 # after the daily login flow, so the ticker is built lazily at connect time.
 TickerBuilder = Callable[[str, str], KiteTickerPort]
@@ -79,6 +84,9 @@ class ZerodhaProvider(MarketProvider):
         # big"). Kept in sync by ``subscribe()`` / ``unsubscribe()``.
         self._subscribed_tokens: list[int] = []
         self._stopping = False
+        # At most one reconnect in flight — prevents overlapping reconnect chains
+        # from multiplying into a storm when the broker keeps rejecting the socket.
+        self._reconnect_pending = False
 
     # -- Auth ---------------------------------------------------------------
     def set_access_token(self, token: str) -> None:
@@ -104,6 +112,17 @@ class ZerodhaProvider(MarketProvider):
     def _open_ticker(self) -> None:
         if self._access_token is None:
             raise ProviderError("Cannot open ticker without an access token.")
+        # Dispose any previous ticker first — a lingering socket keeps firing
+        # close/error callbacks, each of which would schedule another reconnect,
+        # producing an exponential storm that floods the broker (and is answered
+        # with 403s). One live ticker at a time. Detach its callbacks before
+        # closing so its own close event doesn't re-enter our reconnect logic.
+        old = self._ticker
+        if old is not None:
+            with contextlib.suppress(Exception):
+                old.on_ticks = old.on_connect = old.on_close = old.on_error = _noop
+            with contextlib.suppress(Exception):
+                old.close()
         ticker = self._ticker_builder(self._api_key, self._access_token)
         ticker.on_ticks = self._on_ticks
         ticker.on_connect = self._on_connect
@@ -218,6 +237,7 @@ class ZerodhaProvider(MarketProvider):
 
     def _on_connect(self, *_: object) -> None:
         self._state.on_connect()
+        self._reconnect_pending = False
         metrics.BROKER_CONNECTED.labels(broker=self.name).set(1)
         metrics.BROKER_RECONNECTS.labels(broker=self.name).inc()
         if self._ticker is not None and self._subscribed_tokens:
@@ -232,6 +252,9 @@ class ZerodhaProvider(MarketProvider):
         metrics.BROKER_CONNECTED.labels(broker=self.name).set(0)
         if self._stopping or self._loop is None:
             return
+        if self._reconnect_pending:
+            return  # a reconnect is already scheduled — don't pile up another
+        self._reconnect_pending = True
         delay = self._backoff.delay_for(self._state.attempts)
         logger.warning("zerodha_disconnected", attempt=self._state.attempts, delay=round(delay, 2))
         self._loop.call_soon_threadsafe(lambda: asyncio.ensure_future(self._reconnect(delay)))
@@ -240,7 +263,15 @@ class ZerodhaProvider(MarketProvider):
         logger.warning("zerodha_error", detail=str(args[-1]) if args else "unknown")
 
     async def _reconnect(self, delay: float) -> None:
-        await asyncio.sleep(delay)
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            self._reconnect_pending = False
+            raise
+        # Clear the in-flight flag *before* opening: opening starts a threaded
+        # connect that may fail immediately, and that close must be free to
+        # schedule exactly one more reconnect after the backoff.
+        self._reconnect_pending = False
         if self._stopping:
             return
         try:

@@ -54,6 +54,14 @@ services:
       # The API consumes market events for WebSocket fan-out but NEVER ingests —
       # ingestion runs in the dedicated `feed` service (R0 #1).
       BKN_EVENT_STREAM_ENABLED: 'true'
+      # Broker (Sprint 6) — the API serves the OAuth login/callback and broker
+      # status, so it needs the Zerodha credentials + token-encryption key.
+      # Only used when BKN_MARKET_PROVIDER=zerodha; advisory-only (no orders).
+      BKN_MARKET_PROVIDER: ${BKN_MARKET_PROVIDER:-simulated}
+      BKN_ZERODHA_API_KEY: ${BKN_ZERODHA_API_KEY:-}
+      BKN_ZERODHA_API_SECRET: ${BKN_ZERODHA_API_SECRET:-}
+      BKN_ZERODHA_REDIRECT_URL: ${BKN_ZERODHA_REDIRECT_URL:-http://localhost:8000/api/v1/broker/zerodha/callback}
+      BKN_BROKER_ENC_KEY: ${BKN_BROKER_ENC_KEY:-}
     volumes:
       - ./backend:/app
     ports:

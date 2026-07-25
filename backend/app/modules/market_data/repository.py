@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,6 +75,49 @@ class MarketDataRepository:
 
     async def symbol_id_map(self) -> dict[str, int]:
         rows = (await self._session.execute(select(Instrument.symbol, Instrument.id))).all()
+        return {row[0]: row[1] for row in rows}
+
+    async def subscription_symbol_ids(
+        self,
+        *,
+        watchlist: Sequence[str] = (),
+        include_fno: bool = False,
+        limit: int = 3000,
+    ) -> dict[str, int]:
+        """Bounded symbol→id map for a live WebSocket subscription.
+
+        A live provider's instrument master covers the whole exchange (100k+
+        rows), far more than one broker socket can carry. Prefer the symbols the
+        platform actually scans — Nifty 500, plus (optionally) F&O names and the
+        operator's explicit watchlist. If none of those are flagged yet (a fresh
+        live universe has no Nifty-500 membership wired), fall back to NSE cash
+        equity so the feed still streams a sensible default set. Always bounded by
+        ``limit`` (Kite allows ~3000 instruments per connection).
+        """
+        conditions = [Instrument.in_nifty500.is_(True)]
+        if include_fno:
+            conditions.append(Instrument.in_fno.is_(True))
+        if watchlist:
+            conditions.append(Instrument.symbol.in_(list(watchlist)))
+        stmt = (
+            select(Instrument.symbol, Instrument.id)
+            .where(Instrument.is_active.is_(True), or_(*conditions))
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        if rows:
+            return {row[0]: row[1] for row in rows}
+        # Fallback: bounded NSE cash equity (no Nifty-500 flags / watchlist yet).
+        stmt = (
+            select(Instrument.symbol, Instrument.id)
+            .where(
+                Instrument.is_active.is_(True),
+                Instrument.exchange == "NSE",
+                Instrument.instrument_type == "EQ",
+            )
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).all()
         return {row[0]: row[1] for row in rows}
 
     # -- Candles ------------------------------------------------------------

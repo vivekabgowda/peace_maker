@@ -90,6 +90,16 @@ def test_backoff_monotonic_capped_and_jitter_bounded() -> None:
         assert 0.0 <= d <= base * 1.2 + 1e-9
 
 
+def test_backoff_does_not_overflow_on_huge_attempt_counts() -> None:
+    # A broker that rejects the socket instantly (e.g. a 403 upgrade failure)
+    # drives the attempt counter into the thousands within seconds. The delay
+    # must stay capped at max_delay instead of raising OverflowError from the
+    # exponentiation (regression: factor ** (attempt - 1) overflowed a float).
+    policy = BackoffPolicy(base=0.5, factor=2.0, max_delay=10.0, jitter=0.0)
+    for attempt in (1_000, 100_000, 10_000_000):
+        assert policy.delay_for(attempt) == 10.0
+
+
 def test_reconnect_state_transitions() -> None:
     st = ReconnectState()
     st.on_disconnect()

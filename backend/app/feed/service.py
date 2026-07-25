@@ -34,6 +34,12 @@ if TYPE_CHECKING:
     from app.modules.broker.token_store import BrokerSession
 from app.shared.supervision import Backoff, Supervisor
 
+# A single broker WebSocket cannot subscribe to an entire exchange universe — Kite
+# caps a connection at ~3000 instruments and rejects oversized frames ("Message too
+# big"). A live instrument master spans 100k+ rows, so the live subscription is
+# scoped to at most this many symbols (watchlist / Nifty 500 / capped cash equity).
+_MAX_WS_SYMBOLS = 3000
+
 logger = get_logger("feed_service")
 
 _PHASE_CODE = {
@@ -54,6 +60,7 @@ class FeedService:
         self._provider_injected = provider is not None
         self._enforce_session = enforce_session
         self._symbol_ids: dict[str, int] = {}
+        self._sub_symbols: list[str] = []
         self._last_volume: dict[str, int] = {}
         self._closed: list[tuple[str, str, WorkingCandle]] = []
         self._builder = CandleBuilder(self._collect_close, self._settings.market_timeframes)
@@ -72,6 +79,7 @@ class FeedService:
             await InstrumentMasterService(repo, self._provider).sync()
             await session.commit()
             self._symbol_ids = await repo.symbol_id_map()
+            self._sub_symbols = await self._resolve_subscriptions(repo)
 
         # Indicator engine consumes candle closes off the bus (decoupled).
         event_bus.subscribe(
@@ -89,7 +97,7 @@ class FeedService:
 
             register_forwarder(event_bus, EventStreamBridge())
             logger.info("event_stream_forwarder_registered")
-        await self._provider.subscribe(list(self._symbol_ids))
+        await self._provider.subscribe(self._sub_symbols)
         await cache.set_market_status("open")
 
         # Supervised loops — a crash restarts with backoff under a circuit breaker.
@@ -157,6 +165,32 @@ class FeedService:
             return broker_session
         return None
 
+    async def _resolve_subscriptions(self, repo: MarketDataRepository) -> list[str]:
+        """Choose the bounded set of symbols to stream from the provider.
+
+        A live broker's instrument master spans the whole exchange (100k+ symbols)
+        but a single WebSocket can only carry a few thousand. When the synced
+        universe is small (e.g. the simulated provider) we keep subscribing to all
+        of it — behaviour is unchanged. When it is large we scope to the configured
+        watchlist / Nifty 500 / capped cash equity so the socket stays within Kite's
+        per-connection limit and never trips a "Message too big" close.
+        """
+        if len(self._symbol_ids) <= _MAX_WS_SYMBOLS:
+            return list(self._symbol_ids)
+        sub_map = await repo.subscription_symbol_ids(
+            watchlist=self._settings.broker_watchlist,
+            include_fno=self._settings.broker_subscribe_fno,
+            limit=_MAX_WS_SYMBOLS,
+        )
+        symbols = list(sub_map)
+        logger.info(
+            "subscription_scoped",
+            universe=len(self._symbol_ids),
+            subscribed=len(symbols),
+            watchlist=len(self._settings.broker_watchlist),
+        )
+        return symbols
+
     async def stop(self) -> None:
         await self._supervisor.stop_all()
         with contextlib.suppress(Exception):
@@ -176,7 +210,7 @@ class FeedService:
         # A restart re-establishes the connection + subscriptions (reconnect).
         if not self._provider.is_connected:
             await self._provider.connect()
-            await self._provider.subscribe(list(self._symbol_ids))
+            await self._provider.subscribe(self._sub_symbols)
             metrics.PROVIDER_CONNECTED.set(1)
         task = self._supervisor.get("quote_stream")
         async for quote in self._provider.stream():

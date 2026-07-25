@@ -17,7 +17,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml README.md ./
 COPY app ./app
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && pip install '.[zerodha]'
 
 # ---- runtime: minimal, non-root ------------------------------------------
 FROM base AS runtime

@@ -100,6 +100,10 @@ services:
       BKN_ZERODHA_API_KEY: ${BKN_ZERODHA_API_KEY:-}
       BKN_ZERODHA_API_SECRET: ${BKN_ZERODHA_API_SECRET:-}
       BKN_BROKER_ENC_KEY: ${BKN_BROKER_ENC_KEY:-}
+      # Scope the live WebSocket subscription (a full exchange universe cannot fit
+      # one Kite socket). Comma-separated symbols; blank => bounded default set.
+      BKN_BROKER_WATCHLIST: ${BKN_BROKER_WATCHLIST:-}
+      BKN_BROKER_SUBSCRIBE_FNO: ${BKN_BROKER_SUBSCRIBE_FNO:-false}
     volumes:
       - ./backend:/app
     ports:

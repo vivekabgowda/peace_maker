@@ -208,6 +208,9 @@ class FeedService:
     # -- Supervised loop bodies --------------------------------------------
     async def _run_quote_stream(self) -> None:
         # A restart re-establishes the connection + subscriptions (reconnect).
+        # For a self-healing provider (Zerodha's ticker reconnects internally on
+        # drop) this runs once and then blocks consuming the stream; the guarded
+        # `connect()` is a no-op while already connected.
         if not self._provider.is_connected:
             await self._provider.connect()
             await self._provider.subscribe(self._sub_symbols)

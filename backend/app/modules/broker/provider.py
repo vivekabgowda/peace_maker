@@ -218,6 +218,10 @@ class ZerodhaProvider(MarketProvider):
     def _on_ticks(self, ticks: list[dict[str, Any]]) -> None:
         if self._loop is None:
             return
+        # A real tick proves the stream is healthy — reset the reconnect backoff so
+        # a future genuine drop starts from a short delay again.
+        if self._state.attempts:
+            self._state.attempts = 0
         for tick in ticks:
             token = tick.get("instrument_token")
             symbol = self._symbol_by_token.get(int(token)) if token is not None else None
@@ -236,7 +240,13 @@ class ZerodhaProvider(MarketProvider):
                 self._queue.put_nowait(quote)
 
     def _on_connect(self, *_: object) -> None:
-        self._state.on_connect()
+        # Mark connected but do NOT reset the backoff here — a broker that accepts
+        # the socket then drops it immediately (e.g. subscribing on a closed
+        # market) would otherwise reset the backoff every cycle and reconnect in a
+        # tight loop. The backoff is reset only when a real tick arrives (proof the
+        # stream is actually healthy) — see ``_on_ticks``.
+        self._state.connected = True
+        self._state.total_reconnects += 1
         self._reconnect_pending = False
         metrics.BROKER_CONNECTED.labels(broker=self.name).set(1)
         metrics.BROKER_RECONNECTS.labels(broker=self.name).inc()

@@ -73,6 +73,11 @@ class ZerodhaProvider(MarketProvider):
         self._token_by_symbol: dict[str, int] = {}
         self._symbol_by_token: dict[int, str] = {}
         self._instruments: list[InstrumentDTO] = []
+        # Tokens actually subscribed via ``subscribe()`` — a bounded set. The
+        # ticker must (re)subscribe *only* these on (re)connect; subscribing the
+        # full instrument universe overflows a single Kite socket ("Message too
+        # big"). Kept in sync by ``subscribe()`` / ``unsubscribe()``.
+        self._subscribed_tokens: list[int] = []
         self._stopping = False
 
     # -- Auth ---------------------------------------------------------------
@@ -134,14 +139,21 @@ class ZerodhaProvider(MarketProvider):
     # -- Subscriptions ------------------------------------------------------
     async def subscribe(self, symbols: list[str]) -> None:
         tokens = [self._token_by_symbol[s] for s in symbols if s in self._token_by_symbol]
+        # Remember the subscribed set so a reconnect restores exactly these tokens
+        # (see ``_on_connect``) rather than the whole instrument universe.
+        self._subscribed_tokens = sorted({*self._subscribed_tokens, *tokens})
         if not tokens or self._ticker is None:
             return
         self._ticker.subscribe(tokens)
         self._ticker.set_mode("full", tokens)
-        metrics.BROKER_SUBSCRIPTIONS.labels(broker=self.name).set(len(tokens))
+        metrics.BROKER_SUBSCRIPTIONS.labels(broker=self.name).set(len(self._subscribed_tokens))
 
     async def unsubscribe(self, symbols: list[str]) -> None:
         tokens = [self._token_by_symbol[s] for s in symbols if s in self._token_by_symbol]
+        if tokens:
+            drop = set(tokens)
+            self._subscribed_tokens = [t for t in self._subscribed_tokens if t not in drop]
+            metrics.BROKER_SUBSCRIPTIONS.labels(broker=self.name).set(len(self._subscribed_tokens))
         if tokens and self._ticker is not None:
             self._ticker.unsubscribe(tokens)
 
@@ -208,8 +220,11 @@ class ZerodhaProvider(MarketProvider):
         self._state.on_connect()
         metrics.BROKER_CONNECTED.labels(broker=self.name).set(1)
         metrics.BROKER_RECONNECTS.labels(broker=self.name).inc()
-        if self._ticker is not None and self._token_by_symbol:
-            self._ticker.set_mode("full", list(self._symbol_by_token))
+        if self._ticker is not None and self._subscribed_tokens:
+            # Restore exactly the bounded set we subscribed to — never the full
+            # universe (that overflows the socket with "Message too big").
+            self._ticker.subscribe(self._subscribed_tokens)
+            self._ticker.set_mode("full", self._subscribed_tokens)
         logger.info("zerodha_connected", reconnects=self._state.total_reconnects)
 
     def _on_close(self, *_: object) -> None:

@@ -14,8 +14,6 @@ import pytest
 from app.feed import service as feed_service
 from app.feed.service import FeedService
 
-pytestmark = pytest.mark.unit
-
 
 class _FakeLiveProvider:
     name = "zerodha"
@@ -37,7 +35,7 @@ class _FakeLiveProvider:
         self.disconnects += 1
         self._connected = False
 
-    async def subscribe(self, symbols: list[str]) -> None:  # noqa: ARG002
+    async def subscribe(self, symbols: list[str]) -> None:
         pass
 
 

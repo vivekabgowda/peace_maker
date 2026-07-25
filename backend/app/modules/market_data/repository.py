@@ -26,40 +26,64 @@ class MarketDataRepository:
 
     # -- Instruments --------------------------------------------------------
     async def upsert_instruments(self, instruments: list[InstrumentDTO]) -> int:
-        count = 0
+        """Idempotently upsert the instrument master; returns rows written.
+
+        Runs on every startup against a possibly-populated table, and a live
+        provider dump (100k+ rows) can list the same identity more than once, so
+        this must be safe to re-run:
+
+        - **De-duplicate** the incoming rows by ``(symbol, exchange,
+          instrument_type)`` — a single ``ON CONFLICT DO UPDATE`` statement cannot
+          touch the same row twice, and ``autoflush=False`` means a per-row
+          existence check would miss same-batch duplicates.
+        - **Bulk upsert in chunks** via ``INSERT ... ON CONFLICT DO UPDATE`` — one
+          statement per chunk instead of 100k round-trips, and each chunk stays
+          well under the driver's bind-parameter limit.
+        """
+        if not instruments:
+            return 0
+        deduped: dict[tuple[str, str, str], dict[str, object]] = {}
         for dto in instruments:
-            existing = await self._session.scalar(
-                select(Instrument).where(
-                    Instrument.symbol == dto.symbol,
-                    Instrument.exchange == dto.exchange.value,
-                    Instrument.instrument_type == dto.instrument_type.value,
-                )
+            key = (dto.symbol, dto.exchange.value, dto.instrument_type.value)
+            deduped[key] = {
+                "symbol": dto.symbol,
+                "exchange": dto.exchange.value,
+                "instrument_type": dto.instrument_type.value,
+                "name": dto.name,
+                "lot_size": dto.lot_size,
+                "tick_size": dto.tick_size,
+                "isin": dto.isin,
+                "sector": dto.sector,
+                "industry": dto.industry,
+                "in_fno": dto.in_fno,
+                "in_nifty500": dto.in_nifty500,
+                "is_active": True,
+                "provider_token": dto.provider_token,
+            }
+        rows = list(deduped.values())
+        is_pg = self._session.bind.dialect.name == "postgresql"
+        insert = pg_insert if is_pg else sqlite_insert
+        chunk_size = 1000
+        for start in range(0, len(rows), chunk_size):
+            chunk = rows[start : start + chunk_size]
+            stmt = insert(Instrument).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["symbol", "exchange", "instrument_type"],
+                set_={
+                    "name": stmt.excluded.name,
+                    "lot_size": stmt.excluded.lot_size,
+                    "tick_size": stmt.excluded.tick_size,
+                    "isin": stmt.excluded.isin,
+                    "sector": stmt.excluded.sector,
+                    "industry": stmt.excluded.industry,
+                    "in_fno": stmt.excluded.in_fno,
+                    "in_nifty500": stmt.excluded.in_nifty500,
+                    "provider_token": stmt.excluded.provider_token,
+                },
             )
-            if existing is None:
-                self._session.add(
-                    Instrument(
-                        symbol=dto.symbol,
-                        exchange=dto.exchange.value,
-                        instrument_type=dto.instrument_type.value,
-                        name=dto.name,
-                        lot_size=dto.lot_size,
-                        tick_size=dto.tick_size,
-                        isin=dto.isin,
-                        sector=dto.sector,
-                        industry=dto.industry,
-                        in_fno=dto.in_fno,
-                        in_nifty500=dto.in_nifty500,
-                        provider_token=dto.provider_token,
-                    )
-                )
-                count += 1
-            else:
-                existing.sector = dto.sector
-                existing.industry = dto.industry
-                existing.in_fno = dto.in_fno
-                existing.in_nifty500 = dto.in_nifty500
+            await self._session.execute(stmt)
         await self._session.flush()
-        return count
+        return len(rows)
 
     async def list_instruments(self, *, fno_only: bool = False) -> list[Instrument]:
         stmt = select(Instrument).where(Instrument.is_active.is_(True))

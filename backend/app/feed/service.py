@@ -61,6 +61,9 @@ class FeedService:
         self._enforce_session = enforce_session
         self._symbol_ids: dict[str, int] = {}
         self._sub_symbols: list[str] = []
+        # Tri-state gate for the live broker socket: None = undecided, True = kept
+        # open for the session, False = closed out of hours. Only transitions act.
+        self._live_gate_open: bool | None = None
         self._last_volume: dict[str, int] = {}
         self._closed: list[tuple[str, str, WorkingCandle]] = []
         self._builder = CandleBuilder(self._collect_close, self._settings.market_timeframes)
@@ -239,13 +242,43 @@ class FeedService:
         task = self._supervisor.get("session_watch")
         while True:
             task.heartbeat()
-            phase = session_phase(datetime.now(UTC))
+            now = datetime.now(UTC)
+            phase = session_phase(now)
             metrics.MARKET_SESSION_PHASE.set(_PHASE_CODE[phase])
             await cache.set_market_status(phase.value)
+            await self._gate_live_feed(now)
             stale = self._supervisor.watchdog()
             if stale:
                 logger.warning("watchdog_stale_tasks", tasks=stale)
             await asyncio.sleep(5.0)
+
+    async def _gate_live_feed(self, now: datetime) -> None:
+        """Keep the live broker socket open only during market hours.
+
+        Outside market hours a live broker drops the socket and its SDK keeps
+        retrying it — a reconnect churn that streams nothing and needlessly hits
+        the broker. So we hold the connection open through the session and close
+        it out of hours, reconnecting at the next open. The simulated provider
+        streams continuously (dev), and an injected provider is left untouched.
+        """
+        if not self._enforce_session:
+            return
+        if getattr(self._provider, "name", "") == "simulated":
+            return
+        open_now = is_market_open(now)
+        if open_now and self._live_gate_open is not True:
+            with contextlib.suppress(Exception):
+                await self._provider.connect()
+                await self._provider.subscribe(self._sub_symbols)
+                metrics.PROVIDER_CONNECTED.set(1)
+            self._live_gate_open = True
+            logger.info("live_feed_opened_for_session", symbols=len(self._sub_symbols))
+        elif not open_now and self._live_gate_open is not False:
+            with contextlib.suppress(Exception):
+                await self._provider.disconnect()
+                metrics.PROVIDER_CONNECTED.set(0)
+            self._live_gate_open = False
+            logger.info("live_feed_closed_out_of_hours")
 
     async def _run_news_poll(self) -> None:
         from app.modules.news.providers import create_news_provider

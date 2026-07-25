@@ -247,7 +247,6 @@ class ZerodhaProvider(MarketProvider):
         # stream is actually healthy) — see ``_on_ticks``.
         self._state.connected = True
         self._state.total_reconnects += 1
-        self._reconnect_pending = False
         metrics.BROKER_CONNECTED.labels(broker=self.name).set(1)
         metrics.BROKER_RECONNECTS.labels(broker=self.name).inc()
         if self._ticker is not None and self._subscribed_tokens:

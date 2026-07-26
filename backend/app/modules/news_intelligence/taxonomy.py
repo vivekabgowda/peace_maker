@@ -158,33 +158,87 @@ class EventProfile:
 # refine polarity from the article text, but these defaults make every event's
 # baseline judgement explicit.
 EVENT_PROFILES: dict[EventType, EventProfile] = {
-    EventType.EARNINGS_BEAT: EventProfile(0.6, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Earnings beat"),  # noqa: E501
-    EventType.EARNINGS_MISS: EventProfile(-0.6, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Earnings miss"),  # noqa: E501
-    EventType.GUIDANCE_UPGRADE: EventProfile(0.55, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Guidance upgrade"),  # noqa: E501
-    EventType.GUIDANCE_DOWNGRADE: EventProfile(-0.55, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Guidance downgrade"),  # noqa: E501
-    EventType.DIVIDEND: EventProfile(0.2, EventSeverity.LOW, ImpactHorizon.SWING, False, "Dividend"),  # noqa: E501
-    EventType.BUYBACK: EventProfile(0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Buyback"),  # noqa: E501
-    EventType.BONUS_ISSUE: EventProfile(0.25, EventSeverity.LOW, ImpactHorizon.SWING, False, "Bonus issue"),  # noqa: E501
-    EventType.STOCK_SPLIT: EventProfile(0.1, EventSeverity.LOW, ImpactHorizon.SWING, False, "Stock split"),  # noqa: E501
-    EventType.RIGHTS_ISSUE: EventProfile(-0.15, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Rights issue"),  # noqa: E501
-    EventType.ACQUISITION: EventProfile(0.35, EventSeverity.HIGH, ImpactHorizon.LONG_TERM, True, "Acquisition"),  # noqa: E501
-    EventType.MERGER: EventProfile(0.3, EventSeverity.HIGH, ImpactHorizon.LONG_TERM, True, "Merger"),  # noqa: E501
-    EventType.REGULATORY_ACTION: EventProfile(-0.5, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Regulatory action"),  # noqa: E501
-    EventType.SEBI_ORDER: EventProfile(-0.6, EventSeverity.CRITICAL, ImpactHorizon.MEDIUM_TERM, True, "SEBI order"),  # noqa: E501
-    EventType.RBI_ANNOUNCEMENT: EventProfile(0.0, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "RBI announcement"),  # noqa: E501
-    EventType.CEO_CHANGE: EventProfile(-0.2, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "CEO change"),  # noqa: E501
-    EventType.CFO_CHANGE: EventProfile(-0.25, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "CFO change"),  # noqa: E501
-    EventType.CREDIT_RATING_UPGRADE: EventProfile(0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Credit rating upgrade"),  # noqa: E501
-    EventType.CREDIT_RATING_DOWNGRADE: EventProfile(-0.5, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Credit rating downgrade"),  # noqa: E501
-    EventType.BULK_DEAL: EventProfile(0.0, EventSeverity.LOW, ImpactHorizon.INTRADAY, False, "Bulk deal"),  # noqa: E501
-    EventType.BLOCK_DEAL: EventProfile(0.0, EventSeverity.MEDIUM, ImpactHorizon.SWING, False, "Block deal"),  # noqa: E501
-    EventType.PROMOTER_BUYING: EventProfile(0.45, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Promoter buying"),  # noqa: E501
-    EventType.PROMOTER_SELLING: EventProfile(-0.45, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Promoter selling"),  # noqa: E501
-    EventType.GOVERNMENT_TENDER: EventProfile(0.35, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Government tender"),  # noqa: E501
-    EventType.LARGE_ORDER_WIN: EventProfile(0.5, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Large order win"),  # noqa: E501
-    EventType.LITIGATION: EventProfile(-0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Litigation"),  # noqa: E501
-    EventType.SECTOR_NEWS: EventProfile(0.0, EventSeverity.LOW, ImpactHorizon.SWING, False, "Sector news"),  # noqa: E501
-    EventType.GENERAL: EventProfile(0.0, EventSeverity.LOW, ImpactHorizon.SWING, False, "General news"),  # noqa: E501
+    EventType.EARNINGS_BEAT: EventProfile(
+        0.6, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Earnings beat"
+    ),
+    EventType.EARNINGS_MISS: EventProfile(
+        -0.6, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Earnings miss"
+    ),
+    EventType.GUIDANCE_UPGRADE: EventProfile(
+        0.55, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Guidance upgrade"
+    ),
+    EventType.GUIDANCE_DOWNGRADE: EventProfile(
+        -0.55, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Guidance downgrade"
+    ),
+    EventType.DIVIDEND: EventProfile(
+        0.2, EventSeverity.LOW, ImpactHorizon.SWING, False, "Dividend"
+    ),
+    EventType.BUYBACK: EventProfile(
+        0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Buyback"
+    ),
+    EventType.BONUS_ISSUE: EventProfile(
+        0.25, EventSeverity.LOW, ImpactHorizon.SWING, False, "Bonus issue"
+    ),
+    EventType.STOCK_SPLIT: EventProfile(
+        0.1, EventSeverity.LOW, ImpactHorizon.SWING, False, "Stock split"
+    ),
+    EventType.RIGHTS_ISSUE: EventProfile(
+        -0.15, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Rights issue"
+    ),
+    EventType.ACQUISITION: EventProfile(
+        0.35, EventSeverity.HIGH, ImpactHorizon.LONG_TERM, True, "Acquisition"
+    ),
+    EventType.MERGER: EventProfile(
+        0.3, EventSeverity.HIGH, ImpactHorizon.LONG_TERM, True, "Merger"
+    ),
+    EventType.REGULATORY_ACTION: EventProfile(
+        -0.5, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Regulatory action"
+    ),
+    EventType.SEBI_ORDER: EventProfile(
+        -0.6, EventSeverity.CRITICAL, ImpactHorizon.MEDIUM_TERM, True, "SEBI order"
+    ),
+    EventType.RBI_ANNOUNCEMENT: EventProfile(
+        0.0, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "RBI announcement"
+    ),
+    EventType.CEO_CHANGE: EventProfile(
+        -0.2, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "CEO change"
+    ),
+    EventType.CFO_CHANGE: EventProfile(
+        -0.25, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "CFO change"
+    ),
+    EventType.CREDIT_RATING_UPGRADE: EventProfile(
+        0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Credit rating upgrade"
+    ),
+    EventType.CREDIT_RATING_DOWNGRADE: EventProfile(
+        -0.5, EventSeverity.HIGH, ImpactHorizon.MEDIUM_TERM, True, "Credit rating downgrade"
+    ),
+    EventType.BULK_DEAL: EventProfile(
+        0.0, EventSeverity.LOW, ImpactHorizon.INTRADAY, False, "Bulk deal"
+    ),
+    EventType.BLOCK_DEAL: EventProfile(
+        0.0, EventSeverity.MEDIUM, ImpactHorizon.SWING, False, "Block deal"
+    ),
+    EventType.PROMOTER_BUYING: EventProfile(
+        0.45, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Promoter buying"
+    ),
+    EventType.PROMOTER_SELLING: EventProfile(
+        -0.45, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Promoter selling"
+    ),
+    EventType.GOVERNMENT_TENDER: EventProfile(
+        0.35, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, False, "Government tender"
+    ),
+    EventType.LARGE_ORDER_WIN: EventProfile(
+        0.5, EventSeverity.HIGH, ImpactHorizon.SWING, True, "Large order win"
+    ),
+    EventType.LITIGATION: EventProfile(
+        -0.4, EventSeverity.MEDIUM, ImpactHorizon.MEDIUM_TERM, True, "Litigation"
+    ),
+    EventType.SECTOR_NEWS: EventProfile(
+        0.0, EventSeverity.LOW, ImpactHorizon.SWING, False, "Sector news"
+    ),
+    EventType.GENERAL: EventProfile(
+        0.0, EventSeverity.LOW, ImpactHorizon.SWING, False, "General news"
+    ),
 }
 
 

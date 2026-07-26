@@ -64,7 +64,11 @@ def impact_timing(event: EventType, session: PublicationSession) -> ImpactTiming
         EventType.CREDIT_RATING_DOWNGRADE,
     }
     if event in structural:
-        return ImpactTiming.LONG_TERM if profile.horizon.value == "long_term" else ImpactTiming.MULTI_DAY  # noqa: E501
+        return (
+            ImpactTiming.LONG_TERM
+            if profile.horizon.value == "long_term"
+            else ImpactTiming.MULTI_DAY
+        )
 
     if session is PublicationSession.DURING_MARKET:
         return ImpactTiming.IMMEDIATE

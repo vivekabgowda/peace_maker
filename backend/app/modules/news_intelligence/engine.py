@@ -120,8 +120,10 @@ class NewsIntelligenceEngine:
 
         # 2) Verify the single most material event and scale the score by it.
         lead = _lead_event(events)
-        status = verify(by_event_sources.get(lead.event, [lead.source]),
-                        critical=profile_for(lead.event).critical)
+        status = verify(
+            by_event_sources.get(lead.event, [lead.source]),
+            critical=profile_for(lead.event).critical,
+        )
         raw *= confidence_multiplier(status)
 
         news_score = int(round(max(-1.0, min(1.0, raw)) * 100))
@@ -210,7 +212,9 @@ def _explain(
         if e.event is EventType.GENERAL:
             continue
         verb = "supports" if e.polarity > 0 else "weighs on" if e.polarity < 0 else "is neutral for"
-        reasons.append(f"{prof.label} ({e.source}) {verb} the name — {e.impact_timing.label.lower()}.")  # noqa: E501
+        reasons.append(
+            f"{prof.label} ({e.source}) {verb} the name — {e.impact_timing.label.lower()}."
+        )
     if not reasons:
         reasons.append("General news flow with no single decisive corporate event.")
 

@@ -25,6 +25,8 @@ class Classification:
 
 # Ordered: the first matching rule wins, so specific patterns precede generic
 # ones. Each rule is (compiled pattern, event, optional polarity override).
+# Keep one readable rule per line; the long regexes are noqa'd for line length.
+# fmt: off
 _RULES: list[tuple[re.Pattern[str], EventType, float | None]] = [
     (re.compile(r"\b(profit|pat|net income|revenue|earnings|q[1-4]|quarter)\w*\b.*\b(beat|surpass|exceed|top|above|jump|surg|ros|rise|grew|grow)\w*"), EventType.EARNINGS_BEAT, None),  # noqa: E501
     (re.compile(r"\b(profit|pat|net income|revenue|earnings|q[1-4]|quarter)\w*\b.*\b(miss|below|fell|fall|drop|declin|slump|plunge|disappoint)\w*"), EventType.EARNINGS_MISS, None),  # noqa: E501
@@ -57,6 +59,7 @@ _RULES: list[tuple[re.Pattern[str], EventType, float | None]] = [
 # Sentiment modifiers that nudge polarity within an event class.
 _POSITIVE = re.compile(r"\b(surge|jump|soar|rally|record|strong|robust|beat|win|wins|expand|approval|approved|upgrade|raise[sd]?)\b")  # noqa: E501
 _NEGATIVE = re.compile(r"\b(plunge|slump|crash|weak|miss|loss|fraud|default|downgrade|ban|penalt|probe|cut|resign|delay|recall|halt)\b")  # noqa: E501
+# fmt: on
 
 
 def classify(headline: str, body: str | None = None) -> Classification:
@@ -65,7 +68,9 @@ def classify(headline: str, body: str | None = None) -> Classification:
     for pattern, event, override in _RULES:
         if pattern.search(text):
             base = profile_for(event).polarity if override is None else override
-            return Classification(event=event, polarity=_refine(base, text), matched=pattern.pattern[:48])  # noqa: E501
+            return Classification(
+                event=event, polarity=_refine(base, text), matched=pattern.pattern[:48]
+            )
     # No specific event — score purely on sentiment words.
     return Classification(event=EventType.GENERAL, polarity=_refine(0.0, text), matched="general")
 

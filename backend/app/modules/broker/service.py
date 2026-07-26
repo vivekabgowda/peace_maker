@@ -88,6 +88,17 @@ class BrokerService:
         start: datetime,
         end: datetime,
     ) -> dict[str, Any]:
+        # Attach the stored daily token so the provider can call the Kite historical
+        # API — a freshly-resolved provider has no token of its own.
+        session = await self._auth.current_session()
+        if not (session and session.is_valid):
+            raise ValueError(
+                "No valid Zerodha token — complete the Kite login flow before backfilling."
+            )
+        set_token = getattr(provider, "set_access_token", None)
+        if callable(set_token):
+            set_token(session.access_token)
+
         result = await HistoricalDataService(provider, self._repo).backfill(
             symbol, timeframe, start, end
         )

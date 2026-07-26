@@ -62,6 +62,17 @@ def test_instrument_to_dto_flags_fno_and_membership() -> None:
     assert dto2.in_nifty500 is True and dto2.in_fno is False
 
 
+def test_index_tradingsymbols_normalize_to_canonical_names() -> None:
+    # Kite lists "NIFTY 50" / "NIFTY BANK"; the platform benchmark expects "NIFTY".
+    nifty = {"tradingsymbol": "NIFTY 50", "instrument_token": 1, "segment": "INDICES"}
+    banknifty = {"tradingsymbol": "NIFTY BANK", "instrument_token": 2, "segment": "INDICES"}
+    assert instrument_to_dto(nifty, nifty500=set(), fno=set()).symbol == "NIFTY"
+    assert instrument_to_dto(banknifty, nifty500=set(), fno=set()).symbol == "BANKNIFTY"
+    # A cash equity is untouched.
+    eq = {"tradingsymbol": "RELIANCE", "instrument_token": 3, "segment": "NSE"}
+    assert instrument_to_dto(eq, nifty500=set(), fno=set()).symbol == "RELIANCE"
+
+
 def test_kite_candle_to_domain() -> None:
     row = {
         "date": "2025-01-02T09:15:00+00:00",

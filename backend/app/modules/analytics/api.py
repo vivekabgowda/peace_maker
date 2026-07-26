@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.core.dependencies import CurrentUser, DbSession
 from app.modules.analytics.reports import ReportService, report_to_dict
 from app.modules.analytics.service import AnalyticsService
+from app.modules.news_intelligence.calibration import NewsCalibrationService
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -20,6 +21,11 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 @router.get("/summary", summary="Overall performance metrics")
 async def summary(_user: CurrentUser, session: DbSession) -> dict[str, Any]:
     return await AnalyticsService(session).summary()
+
+
+@router.get("/news-performance", summary="News Intelligence accuracy & calibration")
+async def news_performance(_user: CurrentUser, session: DbSession) -> dict[str, Any]:
+    return await NewsCalibrationService(session).accuracy()
 
 
 @router.get("/equity-curve", summary="Equity curve points")

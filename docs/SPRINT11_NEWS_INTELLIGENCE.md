@@ -147,16 +147,25 @@ scoring, explainable reasons + risk factors · ✅ CIO/committee integration
 > real services (network-gated, like the Zerodha indicator-parity gate); the
 > adapters and their parsing are complete and unit-tested against fixtures.
 
-## Deferred to Phase 3 (tracked, not stubbed)
+## Phase 3 — Learning loop & live wiring (shipped)
 
-- **Continuous self-calibration:** for each closed trade, score whether the
-  sentiment was right, the horizon held, and price actually moved; update
-  historical accuracy stats (reads the `news_assessments` store).
-- **UI:** Scanner (score, headlines, horizon, explanation, reliability), Journal
-  (news-at-entry/exit, supported/contradicted), Analytics (performance by
-  sentiment / event type), and monitoring dashboards.
-- **Scanner/committee pipeline wiring:** attach the live `NewsAssessment` to each
-  `CommitteeBrief` (the seam and the agent already consume it — see Phase 1).
+- **Committee wiring** (`committee/service.py`): every deliberation now computes
+  the symbol's `NewsAssessment` via `NewsIntelligenceService` and attaches it to
+  the `CommitteeBrief`, so the News agent votes on real, verified, session-aware
+  news in live recommendations (side-effect-free; `persist=False`).
+- **Continuous self-calibration** (`calibration.py`): `NewsCalibrationService`
+  matches every closed `JournalEntry` to the news assessment that preceded entry
+  and scores whether the sentiment predicted the realized price move — producing
+  accuracy, avg return after positive vs negative news, and per-sentiment
+  win-rate/return. Read-only; it never changes any strategy. Served at
+  `GET /analytics/news-performance`.
+
+## Deferred (final piece — frontend)
+
+- **UI:** Scanner column (score, headlines, horizon, explanation, reliability),
+  Journal (news-at-entry/exit, supported/contradicted), and the Analytics
+  news-performance panel. The backend APIs above are the data source; this is a
+  presentation-layer follow-up.
 
 No placeholder implementations were shipped; deferred items are genuinely
 out-of-scope, not mocked.

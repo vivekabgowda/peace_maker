@@ -9,6 +9,7 @@ import {
   getEquityCurve,
   type EquityCurve,
 } from '@/features/analytics/api';
+import { NewsPerformanceCard } from '@/features/news-intelligence/NewsPerformanceCard';
 import { cn, formatINR } from '@/lib/utils';
 
 function holdingLabel(seconds: number): string {
@@ -191,6 +192,8 @@ export function AnalyticsView() {
           <p className="text-sm text-content-muted">Loading curve…</p>
         )}
       </Card>
+
+      <NewsPerformanceCard />
 
       <Card className="overflow-x-auto p-0">
         <div className="border-b border-surface-border px-5 py-4">

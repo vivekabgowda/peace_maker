@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { Card } from '@/components/ui/Card';
 import { getJournalEntries, type JournalEntry } from '@/features/journal/api';
+import { getNewsJournal } from '@/features/news-intelligence/api';
+import { NewsFlag } from '@/features/news-intelligence/NewsFlag';
 import { cn, formatINR } from '@/lib/utils';
 
 function holdingLabel(seconds: number): string {
@@ -61,6 +63,12 @@ export function JournalView() {
     queryFn: () => getJournalEntries(200),
     refetchInterval: 20000,
   });
+  const newsQuery = useQuery({
+    queryKey: ['news-journal'],
+    queryFn: getNewsJournal,
+    refetchInterval: 30000,
+  });
+  const newsByEntry = newsQuery.data ?? {};
 
   if (isLoading) {
     return <Card className="text-sm text-content-muted">Loading trade journal…</Card>;
@@ -121,6 +129,7 @@ export function JournalView() {
               <th className="px-4 py-3 text-right font-medium">Net P&L</th>
               <th className="px-4 py-3 text-right font-medium">R</th>
               <th className="px-4 py-3 font-medium">Outcome</th>
+              <th className="px-4 py-3 font-medium">News</th>
               <th className="px-4 py-3 font-medium">Exit</th>
               <th className="px-4 py-3 text-right font-medium">Held</th>
               <th className="px-4 py-3 font-medium">Strategy</th>
@@ -169,6 +178,9 @@ export function JournalView() {
                 </td>
                 <td className="px-4 py-2.5">
                   <OutcomeBadge outcome={e.outcome} />
+                </td>
+                <td className="px-4 py-2.5">
+                  <NewsFlag info={newsByEntry[String(e.id)]} />
                 </td>
                 <td className="px-4 py-2.5 text-content-muted">{e.exit_reason ?? '—'}</td>
                 <td className="tabular px-4 py-2.5 text-right text-content-muted">

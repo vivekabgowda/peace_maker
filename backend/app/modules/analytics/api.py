@@ -28,6 +28,11 @@ async def news_performance(_user: CurrentUser, session: DbSession) -> dict[str, 
     return await NewsCalibrationService(session).accuracy()
 
 
+@router.get("/news-journal", summary="Per-trade news context (supported/contradicted)")
+async def news_journal(_user: CurrentUser, session: DbSession) -> dict[str, Any]:
+    return {"data": await NewsCalibrationService(session).journal_context()}
+
+
 @router.get("/equity-curve", summary="Equity curve points")
 async def equity_curve(_user: CurrentUser, session: DbSession) -> dict[str, Any]:
     return await AnalyticsService(session).equity_curve()

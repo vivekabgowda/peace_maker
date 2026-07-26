@@ -77,6 +77,23 @@ async def test_accuracy_scores_news_against_realized_move() -> None:
         assert stats["avg_r_after_negative_news"] == -1.0
 
 
+async def test_journal_context_flags_supported_and_contradicted() -> None:
+    async with async_session_factory() as session:
+        session.add(_news("WIN", 50, "strong_positive", _T0))
+        session.add(_news("BAD", 50, "strong_positive", _T0))
+        # positive news, long win (price up) → supported
+        good = _trade("WIN", "long", "2.0", "win", _T0 + timedelta(hours=1))
+        # positive news, long loss (price down) → contradicted
+        bad = _trade("BAD", "long", "-1.0", "loss", _T0 + timedelta(hours=1))
+        session.add_all([good, bad])
+        await session.flush()
+
+        ctx = await NewsCalibrationService(session).journal_context()
+        assert ctx[str(good.id)]["supported"] is True
+        assert ctx[str(bad.id)]["supported"] is False
+        assert ctx[str(good.id)]["news_score"] == 50
+
+
 async def test_news_before_entry_only() -> None:
     async with async_session_factory() as session:
         # Assessment generated AFTER the trade entry must not be used.

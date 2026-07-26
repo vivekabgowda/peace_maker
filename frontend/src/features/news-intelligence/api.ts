@@ -44,8 +44,20 @@ export interface NewsAssessment {
   article_count: number;
 }
 
+export interface JournalNews {
+  news_score: number;
+  sentiment: string;
+  verification_status: string;
+  supported: boolean | null;
+}
+
 export const getNewsPerformance = () =>
   apiFetch<NewsPerformance>('/analytics/news-performance', { auth: true });
+
+export const getNewsJournal = () =>
+  apiFetch<{ data: Record<string, JournalNews> }>('/analytics/news-journal', {
+    auth: true,
+  }).then((r) => r.data);
 
 export const getNewsAssessment = (symbol: string) =>
   apiFetch<NewsAssessment>(`/news-intelligence/${encodeURIComponent(symbol)}`, { auth: true });

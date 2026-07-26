@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { Card } from '@/components/ui/Card';
+import { NewsBadge } from '@/features/news-intelligence/NewsBadge';
 import { getOpportunities, type Opportunity, type Regime } from '@/features/scanner/api';
 import { cn } from '@/lib/utils';
 
@@ -75,6 +76,7 @@ function OpportunityTable({ rows }: { rows: Opportunity[] }) {
             <th className="px-4 py-3 text-right font-medium">R:R</th>
             <th className="px-4 py-3 font-medium">Score</th>
             <th className="px-4 py-3 text-right font-medium">Conf.</th>
+            <th className="px-4 py-3 font-medium">News</th>
             <th className="px-4 py-3 font-medium">Hold</th>
           </tr>
         </thead>
@@ -107,6 +109,9 @@ function OpportunityTable({ rows }: { rows: Opportunity[] }) {
               </td>
               <td className="tabular px-4 py-2.5 text-right text-content-muted">
                 {(o.confidence * 100).toFixed(0)}%
+              </td>
+              <td className="px-4 py-2.5">
+                <NewsBadge symbol={o.symbol} />
               </td>
               <td className="px-4 py-2.5 text-content-muted">{o.expected_holding}</td>
             </tr>

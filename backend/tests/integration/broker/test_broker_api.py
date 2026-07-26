@@ -90,6 +90,13 @@ async def test_historical_backfill_persists_candles(broker_client: httpx.AsyncCl
         session.add(Instrument(symbol="TCS", exchange="NSE", instrument_type="EQ", sector="IT"))
         await session.commit()
 
+    # Backfill authenticates against the stored daily token, so complete the
+    # Kite OAuth callback first (the fake yields a valid session for REQ99).
+    cb = await broker_client.get(
+        "/api/v1/broker/zerodha/callback?request_token=REQ99", headers=headers
+    )
+    assert cb.status_code == 200, cb.text
+
     resp = await broker_client.post(
         "/api/v1/broker/historical/backfill"
         "?symbol=TCS&timeframe=1d&start=2025-01-01T00:00:00Z&end=2025-01-05T00:00:00Z",
@@ -103,3 +110,19 @@ async def test_historical_backfill_persists_candles(broker_client: httpx.AsyncCl
         assert iid is not None
         candles = await MarketDataRepository(session).recent_candles(iid, "1d", 10)
         assert len(candles) >= 1
+
+
+async def test_historical_backfill_without_token_is_rejected(
+    broker_client: httpx.AsyncClient,
+) -> None:
+    # Guard: without a completed Kite login there is no daily token, so the
+    # Historical API cannot authenticate — the request must fail fast, not
+    # silently call Kite unauthenticated.
+    headers = await _auth(broker_client)
+    resp = await broker_client.post(
+        "/api/v1/broker/historical/backfill"
+        "?symbol=TCS&timeframe=1d&start=2025-01-01T00:00:00Z&end=2025-01-05T00:00:00Z",
+        headers=headers,
+    )
+    assert resp.status_code == 400, resp.text
+    assert "token" in resp.json()["error"]["message"].lower()

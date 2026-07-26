@@ -125,18 +125,38 @@ scoring, explainable reasons + risk factors · ✅ CIO/committee integration
 (confidence-weighted, non-overriding) · ✅ Prometheus metrics · ✅ 35 unit tests ·
 ✅ this doc + architecture diagram.
 
-## Deferred to Phases 2-3 (tracked, not stubbed)
+## Phase 2 — Live sources, history & the reusable service (shipped)
 
-- **Phase 2 — Live sources & history:** Tier-1 provider adapters (NSE/BSE/RBI/SEBI
-  corporate-announcement endpoints), the extended historical news DB (headline,
-  ts, ticker, source, sentiment, confidence, event type, horizon, verification —
-  for later model training), verification persistence, and Scanner-pipeline
-  enrichment.
-- **Phase 3 — Learning & UX:** continuous self-calibration (was sentiment right?
-  did the impact horizon hold? did price actually move?), Scanner/Journal/Analytics
-  UI (news score, headlines, horizon, explanation, reliability; news-at-entry/exit
-  and supported/contradicted; performance by sentiment/event type), and monitoring
-  dashboards.
+- **Tier-1 plugin adapters** (`news/providers/official.py`): `nse`, `bse`, `rbi`,
+  `sebi` over the `NewsProvider` interface, each tagging a canonical `source` the
+  reliability engine scores at 100. HTTP transport is injectable (default httpx),
+  so parsing is unit-tested against fixtures with no network; registered in the
+  provider factory. Adding a source = one subclass (endpoint + field map).
+- **Historical assessment store** (`news_assessments`, migration `0009`): an
+  append-only per-symbol history — score, sentiment, confidence, reliability,
+  verification, horizon, timing, session, plus the full JSON payload (events,
+  reasons, risks, headlines) — the training substrate for calibration.
+- **`NewsIntelligenceService`** — the reusable API: `assess(symbol)` loads stored
+  news → runs the engine → persists a snapshot → returns the standardized
+  `NewsAssessment`; `latest`/`latest_or_assess`/`history` serve the read model.
+  Every consumer goes through this.
+- **REST**: `GET /news-intelligence/{symbol}`, `POST /{symbol}/assess`,
+  `GET /{symbol}/history` for the Scanner/Journal/Analytics UI.
+
+> Live endpoint URLs/headers for the Tier-1 sources need verification against the
+> real services (network-gated, like the Zerodha indicator-parity gate); the
+> adapters and their parsing are complete and unit-tested against fixtures.
+
+## Deferred to Phase 3 (tracked, not stubbed)
+
+- **Continuous self-calibration:** for each closed trade, score whether the
+  sentiment was right, the horizon held, and price actually moved; update
+  historical accuracy stats (reads the `news_assessments` store).
+- **UI:** Scanner (score, headlines, horizon, explanation, reliability), Journal
+  (news-at-entry/exit, supported/contradicted), Analytics (performance by
+  sentiment / event type), and monitoring dashboards.
+- **Scanner/committee pipeline wiring:** attach the live `NewsAssessment` to each
+  `CommitteeBrief` (the seam and the agent already consume it — see Phase 1).
 
 No placeholder implementations were shipped; deferred items are genuinely
-out-of-scope for this PR, not mocked.
+out-of-scope, not mocked.

@@ -3,10 +3,13 @@
 from collections.abc import Callable
 
 from app.modules.news.providers.base import NewsProvider, RawArticle
+from app.modules.news.providers.official import OFFICIAL_PROVIDERS
 from app.modules.news.providers.simulated import SimulatedNewsProvider
 
 _REGISTRY: dict[str, Callable[[], NewsProvider]] = {
     "simulated": SimulatedNewsProvider,
+    # Tier-1 official sources (Sprint 11) — plugin adapters, one per source.
+    **OFFICIAL_PROVIDERS,
     # Future: "moneycontrol", "economic_times", "reuters", "rss", "telegram" ...
 }
 

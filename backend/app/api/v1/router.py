@@ -18,6 +18,7 @@ from app.modules.health.router import router as health_router
 from app.modules.journal.api import router as journal_router
 from app.modules.market_data.api import router as market_router
 from app.modules.news.api import router as news_router
+from app.modules.news_intelligence.api import router as news_intelligence_router
 from app.modules.paper_trading.api import router as paper_router
 from app.modules.scanner.api import router as alpha_router
 from app.modules.users.router import router as users_router
@@ -30,6 +31,7 @@ api_router.include_router(auth_router)
 api_router.include_router(users_router)
 api_router.include_router(market_router)
 api_router.include_router(news_router)
+api_router.include_router(news_intelligence_router)
 api_router.include_router(alpha_router)
 api_router.include_router(committee_router)
 api_router.include_router(backtest_router)

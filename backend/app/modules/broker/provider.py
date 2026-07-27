@@ -215,7 +215,10 @@ class ZerodhaProvider(MarketProvider):
             return False
 
     # -- Ticker callbacks (run on the SDK thread) ---------------------------
-    def _on_ticks(self, ticks: list[dict[str, Any]]) -> None:
+    def _on_ticks(self, _ws: object, ticks: list[dict[str, Any]]) -> None:
+        # KiteTicker invokes every callback with the websocket as the first
+        # positional arg (``on_ticks(ws, ticks)``) — accept and ignore it, or the
+        # SDK raises TypeError on every tick and the socket flaps endlessly.
         if self._loop is None:
             return
         # A real tick proves the stream is healthy — reset the reconnect backoff so

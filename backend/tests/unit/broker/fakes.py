@@ -86,7 +86,7 @@ class FakeKiteTicker:
     """Implements KiteTickerPort; connect() invokes on_connect synchronously."""
 
     def __init__(self) -> None:
-        self.on_ticks: Callable[[list[dict[str, Any]]], None] | None = None
+        self.on_ticks: Callable[..., None] | None = None
         self.on_connect: Callable[..., None] | None = None
         self.on_close: Callable[..., None] | None = None
         self.on_error: Callable[..., None] | None = None
@@ -115,8 +115,10 @@ class FakeKiteTicker:
         return self._connected
 
     def emit_ticks(self, ticks: list[dict[str, Any]]) -> None:
+        # Mirror the real KiteTicker, which passes the websocket as the first
+        # positional arg: ``on_ticks(ws, ticks)``.
         if self.on_ticks:
-            self.on_ticks(ticks)
+            self.on_ticks(self, ticks)
 
     def emit_close(self) -> None:
         self._connected = False

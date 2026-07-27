@@ -105,6 +105,19 @@ async def test_auth_rejects_missing_token() -> None:
         await auth.complete_login("bad")  # fake returns {} for "bad"
 
 
+async def test_auth_wraps_kite_exception_as_clean_error() -> None:
+    # The Kite SDK raises its own exception types (e.g. TokenException) for an
+    # expired/reused request_token. Those must surface as a ValueError with the
+    # underlying reason — not bubble up as an opaque 500.
+    class _Boom(FakeKiteHttp):
+        def generate_session(self, request_token: str, api_secret: str):  # type: ignore[no-untyped-def]
+            raise RuntimeError("Token is invalid or has expired.")
+
+    auth = ZerodhaAuth(_Boom(), api_secret="S", store=MemoryTokenStore())
+    with pytest.raises(ValueError, match="expired"):
+        await auth.complete_login("REQ123")
+
+
 def _dt(day: int):  # type: ignore[no-untyped-def]
     from datetime import UTC, datetime
 

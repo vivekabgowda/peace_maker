@@ -64,12 +64,35 @@ def test_instrument_to_dto_flags_fno_and_membership() -> None:
 
 def test_index_tradingsymbols_normalize_to_canonical_names() -> None:
     # Kite lists "NIFTY 50" / "NIFTY BANK"; the platform benchmark expects "NIFTY".
-    nifty = {"tradingsymbol": "NIFTY 50", "instrument_token": 1, "segment": "INDICES"}
-    banknifty = {"tradingsymbol": "NIFTY BANK", "instrument_token": 2, "segment": "INDICES"}
-    assert instrument_to_dto(nifty, nifty500=set(), fno=set()).symbol == "NIFTY"
+    # Crucially, Kite's real index rows carry instrument_type="EQ" and are only
+    # distinguished by segment="INDICES" — so the mapper must classify them as
+    # INDEX from the segment (not the type) for normalization to fire.
+    nifty = {
+        "tradingsymbol": "NIFTY 50",
+        "instrument_token": 256265,
+        "segment": "INDICES",
+        "exchange": "NSE",
+        "instrument_type": "EQ",
+    }
+    banknifty = {
+        "tradingsymbol": "NIFTY BANK",
+        "instrument_token": 260105,
+        "segment": "INDICES",
+        "exchange": "NSE",
+        "instrument_type": "EQ",
+    }
+    nifty_dto = instrument_to_dto(nifty, nifty500=set(), fno=set())
+    assert nifty_dto.symbol == "NIFTY"
+    assert nifty_dto.instrument_type is InstrumentType.INDEX
+    assert nifty_dto.provider_token == "256265"  # token preserved for historical lookup
     assert instrument_to_dto(banknifty, nifty500=set(), fno=set()).symbol == "BANKNIFTY"
     # A cash equity is untouched.
-    eq = {"tradingsymbol": "RELIANCE", "instrument_token": 3, "segment": "NSE"}
+    eq = {
+        "tradingsymbol": "RELIANCE",
+        "instrument_token": 3,
+        "segment": "NSE",
+        "instrument_type": "EQ",
+    }
     assert instrument_to_dto(eq, nifty500=set(), fno=set()).symbol == "RELIANCE"
 
 

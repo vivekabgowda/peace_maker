@@ -117,7 +117,18 @@ class MarketDataRepository:
         live universe has no Nifty-500 membership wired), fall back to NSE cash
         equity so the feed still streams a sensible default set. Always bounded by
         ``limit`` (Kite allows ~3000 instruments per connection).
+
+        The headline indices (NIFTY, BANKNIFTY, SENSEX, INDIAVIX, …) are always
+        unioned in regardless of the equity selection — they power the dashboard
+        ticker, market breadth, and the scanner benchmark, and are a tiny set well
+        under the socket limit.
         """
+        index_stmt = select(Instrument.symbol, Instrument.id).where(
+            Instrument.is_active.is_(True),
+            Instrument.instrument_type == "INDEX",
+        )
+        indices = {row[0]: row[1] for row in (await self._session.execute(index_stmt)).all()}
+
         conditions = [Instrument.in_nifty500.is_(True)]
         if include_fno:
             conditions.append(Instrument.in_fno.is_(True))
@@ -129,20 +140,19 @@ class MarketDataRepository:
             .limit(limit)
         )
         rows = (await self._session.execute(stmt)).all()
-        if rows:
-            return {row[0]: row[1] for row in rows}
-        # Fallback: bounded NSE cash equity (no Nifty-500 flags / watchlist yet).
-        stmt = (
-            select(Instrument.symbol, Instrument.id)
-            .where(
-                Instrument.is_active.is_(True),
-                Instrument.exchange == "NSE",
-                Instrument.instrument_type == "EQ",
+        if not rows:
+            # Fallback: bounded NSE cash equity (no Nifty-500 flags / watchlist yet).
+            stmt = (
+                select(Instrument.symbol, Instrument.id)
+                .where(
+                    Instrument.is_active.is_(True),
+                    Instrument.exchange == "NSE",
+                    Instrument.instrument_type == "EQ",
+                )
+                .limit(limit)
             )
-            .limit(limit)
-        )
-        rows = (await self._session.execute(stmt)).all()
-        return {row[0]: row[1] for row in rows}
+            rows = (await self._session.execute(stmt)).all()
+        return {**indices, **{row[0]: row[1] for row in rows}}
 
     # -- Candles ------------------------------------------------------------
     async def upsert_candle(

@@ -7,9 +7,13 @@ a populated table (per-row add with autoflush disabled).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from decimal import Decimal
+
 import pytest
 from app.core.database import async_session_factory
 from app.modules.market_data.domain.models import Exchange, InstrumentDTO, InstrumentType
+from app.modules.market_data.orm import Instrument
 from app.modules.market_data.repository import MarketDataRepository
 
 pytestmark = pytest.mark.integration
@@ -35,6 +39,34 @@ async def test_subscription_always_includes_indices() -> None:
         subs = await repo.subscription_symbol_ids(watchlist=["RELIANCE"])
         assert "RELIANCE" in subs  # the explicit watchlist name
         assert "NIFTY" in subs and "BANKNIFTY" in subs  # indices unioned in regardless
+
+
+async def test_subscription_includes_symbols_with_history() -> None:
+    # "Stream what you analyze": a symbol we hold stored candles for must be in the
+    # live subscription even when it is in no watchlist and carries no Nifty-500
+    # flag — seeding history is what enrols a symbol into the tracked universe.
+    async with async_session_factory() as session:
+        session.add(Instrument(symbol="SEEDED", exchange="NSE", instrument_type="EQ"))
+        session.add(Instrument(symbol="UNSEEN", exchange="NSE", instrument_type="EQ"))
+        await session.flush()
+        repo = MarketDataRepository(session)
+        iid = await repo.get_instrument_id("SEEDED")
+        assert iid is not None
+        await repo.upsert_candle(
+            iid,
+            "1d",
+            datetime(2026, 3, 2, tzinfo=UTC),
+            Decimal("100"),
+            Decimal("101"),
+            Decimal("99"),
+            Decimal("100.5"),
+            1000,
+        )
+        await session.commit()
+
+        subs = await repo.subscription_symbol_ids()  # no watchlist, no flags
+        assert "SEEDED" in subs  # has candles → subscribed
+        assert "UNSEEN" not in subs  # no history, no flag → not streamed
 
 
 async def test_upsert_instruments_dedupes_and_is_idempotent() -> None:

@@ -151,7 +151,14 @@ class MarketDataRepository:
         )
         indices = {row[0]: row[1] for row in (await self._session.execute(index_stmt)).all()}
 
-        conditions = [Instrument.in_nifty500.is_(True)]
+        # Stream what we analyze: any symbol we hold stored candles for is part of
+        # the scan universe, so subscribe it for live updates. This makes "what you
+        # seed" the single source of truth for the tradeable universe — no separate
+        # watchlist to keep in sync.
+        conditions = [
+            Instrument.in_nifty500.is_(True),
+            Instrument.id.in_(select(Candle.instrument_id).distinct()),
+        ]
         if include_fno:
             conditions.append(Instrument.in_fno.is_(True))
         if watchlist:

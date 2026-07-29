@@ -98,10 +98,15 @@ backfill() {
 }
 
 echo "→ Benchmark $BENCHMARK (1d, ${DAILY_DAYS}d)…"
+TOKEN="$(_login)"
 backfill "$BENCHMARK" 1d "$START_1D"
 
 echo "→ Watchlist (1d ${DAILY_DAYS}d + 5m ${INTRA_DAYS}d)…"
 for s in $SYMBOLS; do
+  # The platform JWT is short-lived; a large universe outlives one login, so
+  # refresh the token per symbol (login is cheap) to avoid mid-run token expiry.
+  TOKEN="$(_login)"
+  [ -z "$TOKEN" ] && { echo "  ✗ re-login failed, aborting"; exit 1; }
   backfill "$s" 1d "$START_1D"
   backfill "$s" 5m "$START_5M"
 done

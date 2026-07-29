@@ -53,6 +53,38 @@ def test_scan_produces_ranked_explained_book() -> None:
     assert [o.rank for o in book.opportunities] == list(range(1, len(book.opportunities) + 1))
 
 
+def test_liquidity_gate_drops_illiquid_names() -> None:
+    # A clean long setup on a thinly-traded name must be filtered out when a
+    # turnover floor is set — its entry/stop/target would be unfillable live.
+    scanner = AlphaScanner()
+    liquid = _leader_ctx("BIGCAP", 1)  # volumes 200k, close ~118 → ~₹2.4cr/day
+    closes = [100 + i * 0.6 for i in range(60)]
+    ind = {
+        "ema_9": closes[-1] - 1,
+        "ema_21": closes[-1] - 3,
+        "ema_50": closes[-1] - 8,
+        "atr_14": 1.0,
+        "adx_14": 30,
+        "rsi_14": 62,
+    }
+    thin = ctx(
+        symbol="MICROCAP",
+        instrument_id=2,
+        series_map={"1d": series("1d", closes, indicators=ind, volumes=[500] * 60)},
+        relative_strength=6.0,
+        index_trend=Direction.LONG,
+    )
+    book = scanner.scan(trending_index(Direction.LONG), [liquid, thin], min_turnover=10_000_000)
+    names = {o.symbol for o in book.opportunities}
+    assert "BIGCAP" in names
+    assert "MICROCAP" not in names
+    assert book.universe_size == 1  # universe reflects the post-gate set
+
+    # With the gate off (default), the thin name is evaluated like any other.
+    ungated = scanner.scan(trending_index(Direction.LONG), [liquid, thin])
+    assert ungated.universe_size == 2
+
+
 def test_scan_respects_sector_cap_in_portfolio_stage() -> None:
     # Four IT leaders; default sector cap is 3 → at most 3 IT names survive.
     scanner = AlphaScanner()

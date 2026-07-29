@@ -62,6 +62,10 @@ services:
       BKN_ZERODHA_API_SECRET: ${BKN_ZERODHA_API_SECRET:-}
       BKN_ZERODHA_REDIRECT_URL: ${BKN_ZERODHA_REDIRECT_URL:-http://localhost:8000/api/v1/broker/zerodha/callback}
       BKN_BROKER_ENC_KEY: ${BKN_BROKER_ENC_KEY:-}
+      # Liquidity gate for the Alpha scanner (₹ avg daily value traded). Keeps
+      # illiquid small caps out of the opportunity book. ₹5cr default once you
+      # widen the universe beyond large caps; raise for a stricter floor.
+      BKN_ALPHA_MIN_TURNOVER: ${BKN_ALPHA_MIN_TURNOVER:-50000000}
     volumes:
       - ./backend:/app
     ports:

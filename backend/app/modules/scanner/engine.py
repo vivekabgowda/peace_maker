@@ -69,6 +69,7 @@ class AlphaScanner:
         held: list[Held] | None = None,
         top_n: int = 20,
         median_turnover: float | None = None,
+        min_turnover: float = 0.0,
     ) -> OpportunityBook:
         ri = regime_inputs or RegimeInputs()
         regime = self._regime_engine.detect(
@@ -79,6 +80,10 @@ class AlphaScanner:
             breadth=ri.breadth,
             global_risk_off=ri.global_risk_off,
         )
+        # Liquidity gate: drop names whose average daily value traded is below the
+        # floor — illiquid small caps quote entries/stops that cannot be filled.
+        if min_turnover > 0:
+            contexts = [c for c in contexts if _liquid_enough(c, min_turnover)]
         candidates = self._evaluate_universe(contexts, regime, median_turnover)
 
         book = rank_opportunities(
@@ -170,6 +175,23 @@ class AlphaScanner:
                     )
                 )
         return candidates
+
+
+def _liquid_enough(ctx: StrategyContext, min_turnover: float) -> bool:
+    """True if the name's average daily value traded clears the floor.
+
+    Uses up to the last 20 daily bars (close x volume). When there is no daily
+    series the name is *not* dropped — absence of data must not be treated as
+    illiquidity (it would silently exclude freshly-added symbols).
+    """
+    daily = ctx.tf("1d")
+    if daily is None or not len(daily):
+        return True
+    recent = daily.bars[-20:]
+    values = [b.close * b.volume for b in recent if b.volume]
+    if not values:
+        return True
+    return (sum(values) / len(values)) >= min_turnover
 
 
 def _ctx_with_regime(ctx: StrategyContext, regime: RegimeState) -> StrategyContext:

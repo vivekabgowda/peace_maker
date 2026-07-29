@@ -91,6 +91,28 @@ class MarketDataRepository:
             stmt = stmt.where(Instrument.in_fno.is_(True))
         return list((await self._session.execute(stmt.order_by(Instrument.symbol))).scalars())
 
+    async def list_instruments_with_history(self, *, fno_only: bool = False) -> list[Instrument]:
+        """Active instruments that have at least one stored candle — the tradeable
+        scan universe.
+
+        A live instrument master spans the whole exchange (100k+ rows). Scanning
+        all of them (two candle queries per instrument) is pathologically slow,
+        pins CPU, and exhausts the DB connection pool. The scanner only has
+        anything to say about symbols it actually holds history for, so bound the
+        universe to those.
+        """
+        stmt = (
+            select(Instrument)
+            .where(
+                Instrument.is_active.is_(True),
+                Instrument.id.in_(select(Candle.instrument_id).distinct()),
+            )
+            .order_by(Instrument.symbol)
+        )
+        if fno_only:
+            stmt = stmt.where(Instrument.in_fno.is_(True))
+        return list((await self._session.execute(stmt)).scalars())
+
     async def get_instrument_id(self, symbol: str) -> int | None:
         result = await self._session.scalar(
             select(Instrument.id).where(Instrument.symbol == symbol).limit(1)

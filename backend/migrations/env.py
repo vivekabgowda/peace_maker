@@ -23,6 +23,7 @@ from app.modules.broker import orm as _broker_orm  # noqa: F401
 from app.modules.journal import orm as _journal_orm  # noqa: F401
 from app.modules.market_data import orm as _market_orm  # noqa: F401
 from app.modules.news import orm as _news_orm  # noqa: F401
+from app.modules.news_intelligence import orm as _news_intel_orm  # noqa: F401
 from app.modules.paper_trading import orm as _paper_orm  # noqa: F401
 from app.modules.users import models as _users_models  # noqa: F401
 from app.modules.validation import orm as _validation_orm  # noqa: F401

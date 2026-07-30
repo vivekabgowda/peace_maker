@@ -73,12 +73,23 @@ class CommitteeService:
                 "reason": "Context unavailable for the selected opportunity.",
             }
 
+        # Enrich the brief with the standardized News Intelligence assessment so
+        # the News agent votes on verified, reliability-weighted, session-aware
+        # news (Sprint 11). Side-effect-free here (persist=False); the store is
+        # populated via the explicit assess endpoint / entry snapshots.
+        from app.modules.news_intelligence.service import NewsIntelligenceService
+
+        news_assessment = await NewsIntelligenceService(self._session).assess(
+            opportunity.symbol, persist=False
+        )
+
         brief = CommitteeBrief(
             opportunity=opportunity,
             context=ctx,
             regime=regime,
             book=book,
             portfolio=portfolio or PortfolioState(),
+            news_assessment=news_assessment,
         )
         # Apply the operator's committee configuration (agent enable/weight and
         # CIO thresholds) from the Admin dashboard; absent config ⇒ defaults.

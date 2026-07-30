@@ -20,7 +20,9 @@ from typing import Any, Protocol, runtime_checkable
 KiteTick = dict[str, Any]
 KiteInstrument = dict[str, Any]
 KiteCandle = list[Any]  # [date, open, high, low, close, volume]
-TickCallback = Callable[[list[KiteTick]], None]
+# KiteTicker calls this as ``on_ticks(ws, ticks)`` — the websocket is the first
+# positional arg, so the callback must accept it (see ZerodhaProvider._on_ticks).
+TickCallback = Callable[..., None]
 
 
 @runtime_checkable

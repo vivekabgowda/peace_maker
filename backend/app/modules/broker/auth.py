@@ -40,7 +40,20 @@ class ZerodhaAuth:
         """Exchange a ``request_token`` for an access token and store it encrypted."""
         if not request_token:
             raise ValueError("request_token is required")
-        data = self._http.generate_session(request_token, self._api_secret)
+        try:
+            data = self._http.generate_session(request_token, self._api_secret)
+        except ValueError:
+            raise
+        except Exception as exc:  # Kite SDK: TokenException/InputException/NetworkException
+            # Surface the real Kite reason as a clean 400 rather than a 500. The
+            # usual cause is an expired/reused request_token (single-use, valid a
+            # few minutes) or an api_key/api_secret mismatch.
+            logger.warning("zerodha_token_exchange_failed", error=str(exc))
+            raise ValueError(
+                f"Kite token exchange failed: {exc}. Request tokens are single-use and "
+                "expire within minutes — re-run the login and paste a fresh token. If it "
+                "keeps failing, verify BKN_ZERODHA_API_KEY / BKN_ZERODHA_API_SECRET."
+            ) from exc
         access_token = data.get("access_token")
         if not access_token:
             raise ValueError("Kite did not return an access_token")

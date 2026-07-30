@@ -18,10 +18,14 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from app.modules.scanner.opportunity import Opportunity, OpportunityBook
 from app.modules.scanner.regime import RegimeState
 from app.modules.strategy.base import StrategyContext
+
+if TYPE_CHECKING:
+    from app.modules.news_intelligence.assessment import NewsAssessment
 
 
 class AgentRole(StrEnum):
@@ -153,6 +157,9 @@ class CommitteeBrief:
     regime: RegimeState
     book: OpportunityBook  # the full ranked book (for alternatives/rejections)
     portfolio: PortfolioState = field(default_factory=PortfolioState)
+    # Standardized News Intelligence output (Sprint 11). Populated upstream by the
+    # single shared engine so the News agent never re-processes raw articles.
+    news_assessment: NewsAssessment | None = None
 
     @property
     def symbol(self) -> str:

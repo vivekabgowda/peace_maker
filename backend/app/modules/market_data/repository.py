@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,46 +26,92 @@ class MarketDataRepository:
 
     # -- Instruments --------------------------------------------------------
     async def upsert_instruments(self, instruments: list[InstrumentDTO]) -> int:
-        count = 0
+        """Idempotently upsert the instrument master; returns rows written.
+
+        Runs on every startup against a possibly-populated table, and a live
+        provider dump (100k+ rows) can list the same identity more than once, so
+        this must be safe to re-run:
+
+        - **De-duplicate** the incoming rows by ``(symbol, exchange,
+          instrument_type)`` — a single ``ON CONFLICT DO UPDATE`` statement cannot
+          touch the same row twice, and ``autoflush=False`` means a per-row
+          existence check would miss same-batch duplicates.
+        - **Bulk upsert in chunks** via ``INSERT ... ON CONFLICT DO UPDATE`` — one
+          statement per chunk instead of 100k round-trips, and each chunk stays
+          well under the driver's bind-parameter limit.
+        """
+        if not instruments:
+            return 0
+        deduped: dict[tuple[str, str, str], dict[str, object]] = {}
         for dto in instruments:
-            existing = await self._session.scalar(
-                select(Instrument).where(
-                    Instrument.symbol == dto.symbol,
-                    Instrument.exchange == dto.exchange.value,
-                    Instrument.instrument_type == dto.instrument_type.value,
-                )
+            key = (dto.symbol, dto.exchange.value, dto.instrument_type.value)
+            deduped[key] = {
+                "symbol": dto.symbol,
+                "exchange": dto.exchange.value,
+                "instrument_type": dto.instrument_type.value,
+                "name": dto.name,
+                "lot_size": dto.lot_size,
+                "tick_size": dto.tick_size,
+                "isin": dto.isin,
+                "sector": dto.sector,
+                "industry": dto.industry,
+                "in_fno": dto.in_fno,
+                "in_nifty500": dto.in_nifty500,
+                "is_active": True,
+                "provider_token": dto.provider_token,
+            }
+        rows = list(deduped.values())
+        is_pg = self._session.bind.dialect.name == "postgresql"
+        insert = pg_insert if is_pg else sqlite_insert
+        chunk_size = 1000
+        for start in range(0, len(rows), chunk_size):
+            chunk = rows[start : start + chunk_size]
+            stmt = insert(Instrument).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["symbol", "exchange", "instrument_type"],
+                set_={
+                    "name": stmt.excluded.name,
+                    "lot_size": stmt.excluded.lot_size,
+                    "tick_size": stmt.excluded.tick_size,
+                    "isin": stmt.excluded.isin,
+                    "sector": stmt.excluded.sector,
+                    "industry": stmt.excluded.industry,
+                    "in_fno": stmt.excluded.in_fno,
+                    "in_nifty500": stmt.excluded.in_nifty500,
+                    "provider_token": stmt.excluded.provider_token,
+                },
             )
-            if existing is None:
-                self._session.add(
-                    Instrument(
-                        symbol=dto.symbol,
-                        exchange=dto.exchange.value,
-                        instrument_type=dto.instrument_type.value,
-                        name=dto.name,
-                        lot_size=dto.lot_size,
-                        tick_size=dto.tick_size,
-                        isin=dto.isin,
-                        sector=dto.sector,
-                        industry=dto.industry,
-                        in_fno=dto.in_fno,
-                        in_nifty500=dto.in_nifty500,
-                        provider_token=dto.provider_token,
-                    )
-                )
-                count += 1
-            else:
-                existing.sector = dto.sector
-                existing.industry = dto.industry
-                existing.in_fno = dto.in_fno
-                existing.in_nifty500 = dto.in_nifty500
+            await self._session.execute(stmt)
         await self._session.flush()
-        return count
+        return len(rows)
 
     async def list_instruments(self, *, fno_only: bool = False) -> list[Instrument]:
         stmt = select(Instrument).where(Instrument.is_active.is_(True))
         if fno_only:
             stmt = stmt.where(Instrument.in_fno.is_(True))
         return list((await self._session.execute(stmt.order_by(Instrument.symbol))).scalars())
+
+    async def list_instruments_with_history(self, *, fno_only: bool = False) -> list[Instrument]:
+        """Active instruments that have at least one stored candle — the tradeable
+        scan universe.
+
+        A live instrument master spans the whole exchange (100k+ rows). Scanning
+        all of them (two candle queries per instrument) is pathologically slow,
+        pins CPU, and exhausts the DB connection pool. The scanner only has
+        anything to say about symbols it actually holds history for, so bound the
+        universe to those.
+        """
+        stmt = (
+            select(Instrument)
+            .where(
+                Instrument.is_active.is_(True),
+                Instrument.id.in_(select(Candle.instrument_id).distinct()),
+            )
+            .order_by(Instrument.symbol)
+        )
+        if fno_only:
+            stmt = stmt.where(Instrument.in_fno.is_(True))
+        return list((await self._session.execute(stmt)).scalars())
 
     async def get_instrument_id(self, symbol: str) -> int | None:
         result = await self._session.scalar(
@@ -75,6 +122,66 @@ class MarketDataRepository:
     async def symbol_id_map(self) -> dict[str, int]:
         rows = (await self._session.execute(select(Instrument.symbol, Instrument.id))).all()
         return {row[0]: row[1] for row in rows}
+
+    async def subscription_symbol_ids(
+        self,
+        *,
+        watchlist: Sequence[str] = (),
+        include_fno: bool = False,
+        limit: int = 3000,
+    ) -> dict[str, int]:
+        """Bounded symbol→id map for a live WebSocket subscription.
+
+        A live provider's instrument master covers the whole exchange (100k+
+        rows), far more than one broker socket can carry. Prefer the symbols the
+        platform actually scans — Nifty 500, plus (optionally) F&O names and the
+        operator's explicit watchlist. If none of those are flagged yet (a fresh
+        live universe has no Nifty-500 membership wired), fall back to NSE cash
+        equity so the feed still streams a sensible default set. Always bounded by
+        ``limit`` (Kite allows ~3000 instruments per connection).
+
+        The headline indices (NIFTY, BANKNIFTY, SENSEX, INDIAVIX, …) are always
+        unioned in regardless of the equity selection — they power the dashboard
+        ticker, market breadth, and the scanner benchmark, and are a tiny set well
+        under the socket limit.
+        """
+        index_stmt = select(Instrument.symbol, Instrument.id).where(
+            Instrument.is_active.is_(True),
+            Instrument.instrument_type == "INDEX",
+        )
+        indices = {row[0]: row[1] for row in (await self._session.execute(index_stmt)).all()}
+
+        # Stream what we analyze: any symbol we hold stored candles for is part of
+        # the scan universe, so subscribe it for live updates. This makes "what you
+        # seed" the single source of truth for the tradeable universe — no separate
+        # watchlist to keep in sync.
+        conditions = [
+            Instrument.in_nifty500.is_(True),
+            Instrument.id.in_(select(Candle.instrument_id).distinct()),
+        ]
+        if include_fno:
+            conditions.append(Instrument.in_fno.is_(True))
+        if watchlist:
+            conditions.append(Instrument.symbol.in_(list(watchlist)))
+        stmt = (
+            select(Instrument.symbol, Instrument.id)
+            .where(Instrument.is_active.is_(True), or_(*conditions))
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).all()
+        if not rows:
+            # Fallback: bounded NSE cash equity (no Nifty-500 flags / watchlist yet).
+            stmt = (
+                select(Instrument.symbol, Instrument.id)
+                .where(
+                    Instrument.is_active.is_(True),
+                    Instrument.exchange == "NSE",
+                    Instrument.instrument_type == "EQ",
+                )
+                .limit(limit)
+            )
+            rows = (await self._session.execute(stmt)).all()
+        return {**indices, **{row[0]: row[1] for row in rows}}
 
     # -- Candles ------------------------------------------------------------
     async def upsert_candle(

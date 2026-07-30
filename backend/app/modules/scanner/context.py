@@ -56,7 +56,11 @@ class ContextBuilder:
         self, *, fno_only: bool = False, now: datetime | None = None
     ) -> UniverseContexts:
         now = now or datetime.now(UTC)
-        instruments = await self._repo.list_instruments(fno_only=fno_only)
+        # Only symbols with stored candles are scannable. On a live broker the
+        # instrument master spans the whole exchange (100k+ rows); scanning all of
+        # them is pathologically slow and exhausts the DB pool, so bound to the
+        # symbols we actually hold history for.
+        instruments = await self._repo.list_instruments_with_history(fno_only=fno_only)
         by_symbol = {i.symbol: i for i in instruments}
 
         index_inst = by_symbol.get(self._benchmark)

@@ -85,14 +85,34 @@ def tick_to_quote(tick: dict[str, Any], symbol: str) -> Quote:
     )
 
 
+# Kite lists index tradingsymbols with spaces (e.g. "NIFTY 50"); normalize them to
+# the platform's canonical benchmark names so the Scanner/regime and the frontend
+# ticker resolve consistently (benchmark defaults to "NIFTY").
+_INDEX_ALIASES: dict[str, str] = {
+    "NIFTY 50": "NIFTY",
+    "NIFTY BANK": "BANKNIFTY",
+    "NIFTY FIN SERVICE": "FINNIFTY",
+    "NIFTY MID SELECT": "MIDCPNIFTY",
+    "NIFTY NEXT 50": "NIFTYNXT50",
+}
+
+
 def instrument_to_dto(row: dict[str, Any], *, nifty500: set[str], fno: set[str]) -> InstrumentDTO:
     """Convert a Kite instrument-master row into an InstrumentDTO."""
     symbol = str(row.get("tradingsymbol", ""))
-    seg = str(row.get("segment", "")).split("-")[-1]
-    itype = _KITE_SEGMENT_TO_TYPE.get(
-        str(row.get("instrument_type", "")).upper(),
-        InstrumentType.INDEX if "INDICES" in str(row.get("segment", "")) else InstrumentType.EQ,
-    )
+    segment_raw = str(row.get("segment", ""))
+    seg = segment_raw.split("-")[-1]
+    # Kite tags its index rows with instrument_type="EQ" and only segment="INDICES"
+    # to distinguish them, so the segment must win over the instrument_type lookup —
+    # otherwise "NIFTY 50" is misclassified as EQ and never normalized to "NIFTY".
+    if "INDICES" in segment_raw:
+        itype = InstrumentType.INDEX
+    else:
+        itype = _KITE_SEGMENT_TO_TYPE.get(
+            str(row.get("instrument_type", "")).upper(), InstrumentType.EQ
+        )
+    if itype is InstrumentType.INDEX:
+        symbol = _INDEX_ALIASES.get(symbol, symbol)
     exchange = _KITE_EXCHANGE.get(str(row.get("exchange", "NSE")).upper(), Exchange.NSE)
     expiry_raw = row.get("expiry")
     expiry = expiry_raw if isinstance(expiry_raw, datetime) else None

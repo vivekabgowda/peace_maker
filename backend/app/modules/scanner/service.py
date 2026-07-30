@@ -67,6 +67,7 @@ class AlphaService:
             regime_inputs=built.regime_inputs,
             top_n=top_n,
             median_turnover=built.median_turnover,
+            min_turnover=self._settings.alpha_min_turnover,
         )
         logger.info(
             "alpha_scan",

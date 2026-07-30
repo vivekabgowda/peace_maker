@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     alpha_benchmark: str = "NIFTY"
     # Strategy allow-list; empty = every registered strategy is enabled.
     alpha_enabled_strategies: CsvList = Field(default_factory=list)
+    # Minimum average daily value traded (₹) for a name to be recommendable — a
+    # liquidity gate that keeps illiquid small caps (unfillable entries/stops) out
+    # of the opportunity book. 0 disables the gate (default, so unit tests using
+    # synthetic low-volume contexts are unaffected); the live stack sets a real
+    # floor via BKN_ALPHA_MIN_TURNOVER.
+    alpha_min_turnover: float = 0.0
 
     # ---- Broker / Zerodha Kite Connect (Sprint 6) ----
     # market_provider selects the broker: "simulated" / "paper" (built-in paper

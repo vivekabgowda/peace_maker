@@ -62,6 +62,40 @@ def test_instrument_to_dto_flags_fno_and_membership() -> None:
     assert dto2.in_nifty500 is True and dto2.in_fno is False
 
 
+def test_index_tradingsymbols_normalize_to_canonical_names() -> None:
+    # Kite lists "NIFTY 50" / "NIFTY BANK"; the platform benchmark expects "NIFTY".
+    # Crucially, Kite's real index rows carry instrument_type="EQ" and are only
+    # distinguished by segment="INDICES" — so the mapper must classify them as
+    # INDEX from the segment (not the type) for normalization to fire.
+    nifty = {
+        "tradingsymbol": "NIFTY 50",
+        "instrument_token": 256265,
+        "segment": "INDICES",
+        "exchange": "NSE",
+        "instrument_type": "EQ",
+    }
+    banknifty = {
+        "tradingsymbol": "NIFTY BANK",
+        "instrument_token": 260105,
+        "segment": "INDICES",
+        "exchange": "NSE",
+        "instrument_type": "EQ",
+    }
+    nifty_dto = instrument_to_dto(nifty, nifty500=set(), fno=set())
+    assert nifty_dto.symbol == "NIFTY"
+    assert nifty_dto.instrument_type is InstrumentType.INDEX
+    assert nifty_dto.provider_token == "256265"  # token preserved for historical lookup
+    assert instrument_to_dto(banknifty, nifty500=set(), fno=set()).symbol == "BANKNIFTY"
+    # A cash equity is untouched.
+    eq = {
+        "tradingsymbol": "RELIANCE",
+        "instrument_token": 3,
+        "segment": "NSE",
+        "instrument_type": "EQ",
+    }
+    assert instrument_to_dto(eq, nifty500=set(), fno=set()).symbol == "RELIANCE"
+
+
 def test_kite_candle_to_domain() -> None:
     row = {
         "date": "2025-01-02T09:15:00+00:00",
@@ -88,6 +122,16 @@ def test_backoff_monotonic_capped_and_jitter_bounded() -> None:
         base = min(1.0 * 2 ** (attempt - 1), 30.0)
         d = jittered.delay_for(attempt)
         assert 0.0 <= d <= base * 1.2 + 1e-9
+
+
+def test_backoff_does_not_overflow_on_huge_attempt_counts() -> None:
+    # A broker that rejects the socket instantly (e.g. a 403 upgrade failure)
+    # drives the attempt counter into the thousands within seconds. The delay
+    # must stay capped at max_delay instead of raising OverflowError from the
+    # exponentiation (regression: factor ** (attempt - 1) overflowed a float).
+    policy = BackoffPolicy(base=0.5, factor=2.0, max_delay=10.0, jitter=0.0)
+    for attempt in (1_000, 100_000, 10_000_000):
+        assert policy.delay_for(attempt) == 10.0
 
 
 def test_reconnect_state_transitions() -> None:

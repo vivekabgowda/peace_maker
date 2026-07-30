@@ -102,11 +102,17 @@ TOKEN="$(_login)"
 backfill "$BENCHMARK" 1d "$START_1D"
 
 echo "→ Watchlist (1d ${DAILY_DAYS}d + 5m ${INTRA_DAYS}d)…"
+# The platform JWT lasts ~15 min; a large universe outlives one login. Refresh
+# every N symbols (not every symbol — the login runs slow argon2 hashing) to stay
+# well inside the token window without the per-symbol overhead.
+_REFRESH_EVERY=20
+_i=0
 for s in $SYMBOLS; do
-  # The platform JWT is short-lived; a large universe outlives one login, so
-  # refresh the token per symbol (login is cheap) to avoid mid-run token expiry.
-  TOKEN="$(_login)"
-  [ -z "$TOKEN" ] && { echo "  ✗ re-login failed, aborting"; exit 1; }
+  if [ $((_i % _REFRESH_EVERY)) -eq 0 ]; then
+    TOKEN="$(_login)"
+    [ -z "$TOKEN" ] && { echo "  ✗ re-login failed, aborting"; exit 1; }
+  fi
+  _i=$((_i + 1))
   backfill "$s" 1d "$START_1D"
   backfill "$s" 5m "$START_5M"
 done
